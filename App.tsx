@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update'>('signin');
   const [loading, setLoading] = useState(true);
   
   const shopSectionRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,12 @@ const App: React.FC = () => {
       }
 
       // 2. Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          setAuthMode('update');
+          setIsAuthModalOpen(true);
+        }
+
         if (session?.user) {
           setUser({
             id: session.user.id,
@@ -91,6 +97,7 @@ const App: React.FC = () => {
   // Handlers
   const handleAddToCart = (product: Product, quantity: number = 1) => {
     if (!user) {
+      setAuthMode('signin');
       setIsAuthModalOpen(true);
       return;
     }
@@ -123,6 +130,7 @@ const App: React.FC = () => {
   const handleProceedToCheckout = () => {
     if (!user) {
       setIsCartOpen(false);
+      setAuthMode('signin');
       setIsAuthModalOpen(true);
       return;
     }
@@ -174,7 +182,7 @@ const App: React.FC = () => {
         cartCount={cartCount}
         user={user}
         onLogout={handleLogout}
-        onAuthClick={() => setIsAuthModalOpen(true)}
+        onAuthClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
       />
 
       {/* LIVE PRODUCT TICKER */}
@@ -434,6 +442,7 @@ const App: React.FC = () => {
 
       <AuthModal 
         isOpen={isAuthModalOpen}
+        initialMode={authMode}
         onClose={() => setIsAuthModalOpen(false)}
         onLogin={(u) => setUser(u)}
       />
