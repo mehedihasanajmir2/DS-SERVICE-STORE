@@ -162,7 +162,7 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
         <div className="flex flex-col items-center gap-6">
           <div className="relative w-20 h-20">
             <div className="absolute inset-0 border-4 border-blue-600/20 rounded-full"></div>
@@ -193,12 +193,12 @@ const App: React.FC = () => {
         />
       )}
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {currentView === 'shop' ? (
-          <div className="space-y-12">
+          <div className="space-y-10 md:space-y-16">
             {/* HERO SECTION */}
             <div 
-              className="relative rounded-[2.5rem] overflow-hidden min-h-[500px] flex items-center shadow-2xl border border-white/10"
+              className="relative rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden min-h-[400px] md:min-h-[500px] flex items-center shadow-2xl border border-white/10"
               style={{
                 backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")',
                 backgroundSize: 'cover',
@@ -207,53 +207,34 @@ const App: React.FC = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-slate-900/60 to-transparent"></div>
               
-              <div className="absolute inset-0 opacity-20 mix-blend-screen pointer-events-none">
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-                  {[...Array(15)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="absolute bg-cyan-400 rounded-full blur-2xl animate-pulse"
-                      style={{
-                        width: Math.random() * 80 + 20 + 'px',
-                        height: Math.random() * 80 + 20 + 'px',
-                        top: Math.random() * 100 + '%',
-                        left: Math.random() * 100 + '%',
-                        animationDelay: Math.random() * 5 + 's',
-                        opacity: Math.random() * 0.3
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="relative z-10 max-w-4xl px-8 md:px-16 pt-8 pb-12 -mt-12">
-                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 leading-tight text-white tracking-tighter whitespace-nowrap overflow-hidden">
-                  DS <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400">SERVICE STORE</span>
+              <div className="relative z-10 max-w-4xl px-6 sm:px-12 md:px-16 py-12">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 leading-tight text-white tracking-tighter">
+                  DS <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 uppercase">Service Store</span>
                 </h1>
                 
-                <div className="inline-block px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 mb-8 shadow-2xl">
-                    <p className="text-xs md:text-sm font-black text-white uppercase tracking-widest mb-1.5">
+                <div className="inline-block px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 mb-8 shadow-2xl max-w-full">
+                    <p className="text-[10px] md:text-sm font-black text-white uppercase tracking-widest mb-1.5">
                         Buy this product in my website
                     </p>
-                    <p className="text-[10px] md:text-xs font-bold text-blue-200 uppercase tracking-widest opacity-90 leading-relaxed">
+                    <p className="text-[9px] md:text-xs font-bold text-blue-200 uppercase tracking-widest opacity-90 leading-relaxed">
                         All Type Apple Id, All Type Icloud, Verified New & Old Gmail Id & Visa Cards
                     </p>
                 </div>
 
-                <div className="flex items-center gap-6 mb-10 flex-wrap">
-                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="h-5 w-auto invert" alt="Apple ID" />
-                      <span className="text-[10px] font-black text-white uppercase tracking-widest">Apple Verified</span>
+                <div className="flex items-center gap-4 md:gap-6 mb-10 flex-wrap">
+                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border border-white/10 shadow-lg">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="h-4 md:h-5 w-auto invert" alt="Apple ID" />
+                      <span className="text-[9px] md:text-[10px] font-black text-white uppercase tracking-widest">Apple Verified</span>
                    </div>
-                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-white/10 shadow-lg">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="h-4 w-auto brightness-200" />
+                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border border-white/10 shadow-lg">
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="h-3 md:h-4 w-auto brightness-200" />
                    </div>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-5">
+                <div className="flex flex-col sm:flex-row gap-4">
                    <button 
                     onClick={scrollToShop}
-                    className="group relative px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-base transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 overflow-hidden"
+                    className="group relative px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-base transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 overflow-hidden w-full sm:w-auto"
                    >
                      <span className="relative z-10">Shop Now</span>
                      <svg className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,68 +246,68 @@ const App: React.FC = () => {
             </div>
 
             {/* Verification Icons Bar */}
-            <div className="bg-white rounded-[2rem] border border-slate-200/60 p-10 shadow-xl shadow-slate-200/50">
-                <div className="flex flex-col md:flex-row items-center gap-12 md:gap-24 justify-center">
-                    <div className="text-center md:text-left">
+            <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-200/60 p-6 md:p-10 shadow-xl shadow-slate-200/50 overflow-hidden">
+                <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16 lg:gap-24 justify-center">
+                    <div className="text-center lg:text-left">
                         <h4 className="text-xl font-black text-slate-900 mb-2">Verified Ecosystem</h4>
-                        <p className="text-sm text-slate-500 font-medium">Seamless integration with global standard accounts and payments.</p>
+                        <p className="text-sm text-slate-500 font-medium max-w-xs md:max-w-none">Seamless integration with global standard accounts and payments.</p>
                     </div>
                     
-                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple Account" className="h-7 w-auto opacity-70 group-hover:opacity-100" />
+                    <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12">
+                        <div className="group flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple Account" className="h-6 md:h-7 w-auto opacity-70 group-hover:opacity-100" />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Apple ID</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Apple ID</span>
                         </div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="Gmail" className="h-6 w-auto opacity-70 group-hover:opacity-100" />
+                        <div className="group flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="Gmail" className="h-5 md:h-6 w-auto opacity-70 group-hover:opacity-100" />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Verified Gmail Id</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Verified Gmail</span>
                         </div>
-                        <div className="h-12 w-[1px] bg-slate-200 hidden lg:block mx-4"></div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="w-10 opacity-70 group-hover:opacity-100" />
+                        <div className="h-10 w-px bg-slate-200 hidden lg:block mx-4"></div>
+                        <div className="group flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="w-8 md:w-10 opacity-70 group-hover:opacity-100" />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Visa</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Visa</span>
                         </div>
-                        <div className="group flex flex-col items-center gap-3">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-6 w-auto opacity-70 group-hover:opacity-100" />
+                        <div className="group flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-5 md:h-6 w-auto opacity-70 group-hover:opacity-100" />
                             </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Master</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Filter and Search */}
-            <div ref={shopSectionRef} className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-white p-4 rounded-[1.5rem] border border-slate-200 shadow-sm scroll-mt-24">
-              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
+            <div ref={shopSectionRef} className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-center justify-between bg-white p-4 md:p-6 rounded-[1.25rem] md:rounded-[1.5rem] border border-slate-200 shadow-sm scroll-mt-24">
+              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-3 lg:pb-0 no-scrollbar">
                 {CATEGORIES.map(cat => (
                   <button 
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap
+                    className={`px-4 py-2.5 rounded-xl text-[11px] md:text-xs font-black transition-all whitespace-nowrap uppercase tracking-wider
                       ${selectedCategory === cat 
                         ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'}`}
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-slate-100'}`}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
               
-              <div className="relative w-full lg:w-[320px]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="relative w-full lg:w-[360px]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input 
                   type="text" 
-                  placeholder="Search services..."
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none transition-all shadow-inner placeholder:text-slate-400 text-sm font-medium"
+                  placeholder="Search our verified services..."
+                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition-all placeholder:text-slate-400 text-sm font-bold"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
@@ -335,11 +316,11 @@ const App: React.FC = () => {
 
             {/* Service Grid Section Heading */}
             <div className="flex items-center gap-4 px-2">
-              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Our Services</h2>
-              <div className="h-px flex-1 bg-slate-200"></div>
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter shrink-0">Our Services</h2>
+              <div className="h-px w-full bg-slate-200"></div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10 pb-20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-10 pb-20">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map(product => (
                   <ProductCard 
@@ -350,9 +331,9 @@ const App: React.FC = () => {
                   />
                 ))
               ) : (
-                <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border border-dashed border-slate-300">
-                   <h3 className="text-2xl font-black text-slate-900">No results found</h3>
-                   <p className="text-slate-500 mt-3 font-medium">Try adjusting your search filters.</p>
+                <div className="col-span-full py-20 md:py-32 text-center bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-300">
+                   <h3 className="text-xl md:text-2xl font-black text-slate-900">No services found</h3>
+                   <p className="text-slate-500 mt-2 md:mt-3 font-medium px-6">Try adjusting your filters or search terms.</p>
                 </div>
               )}
             </div>
@@ -376,9 +357,9 @@ const App: React.FC = () => {
         ) : null}
       </main>
 
-      <footer className="bg-[#0F172A] text-slate-400 pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-20 mb-20">
-            <div className="space-y-8">
+      <footer className="bg-[#0F172A] text-slate-400 pt-16 md:pt-24 pb-12">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-20 mb-16 md:mb-20">
+            <div className="space-y-6 md:space-y-8">
                 <div className="flex items-center gap-3">
                     <div className="relative flex items-center justify-center w-10 h-10">
                         <div className="absolute inset-0 border-2 border-cyan-400/40 rounded-full border-t-transparent animate-spin"></div>
@@ -389,42 +370,42 @@ const App: React.FC = () => {
                     </div>
                     <h3 className="text-white text-xl font-black tracking-tight">DS <span className="font-normal text-slate-400">SERVICE STORE</span></h3>
                 </div>
-                <p className="text-base leading-relaxed text-slate-400/80">
-                    Scientific precision for digital growth. Scale your vision with the DS platform.
+                <p className="text-sm md:text-base leading-relaxed text-slate-400/80">
+                    Scientific precision for digital growth. Scale your vision with the DS platform. Reliable digital solutions since 2005.
                 </p>
             </div>
             <div>
-                <h4 className="text-white font-black text-lg mb-10 tracking-wide uppercase text-xs">Expertise</h4>
-                <ul className="space-y-5 text-sm font-bold">
-                    <li>Software Architecture</li>
-                    <li>Growth Engineering</li>
-                    <li>Search Optimization</li>
+                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Expertise</h4>
+                <ul className="space-y-4 text-xs md:text-sm font-bold">
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Software Architecture</li>
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Growth Engineering</li>
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Search Optimization</li>
                 </ul>
             </div>
             <div>
-                <h4 className="text-white font-black text-lg mb-10 tracking-wide uppercase text-xs">Support</h4>
-                <ul className="space-y-5 text-sm font-bold">
-                    <li>Documentation</li>
-                    <li>Technical Audits</li>
-                    <li>API Reference</li>
+                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Support</h4>
+                <ul className="space-y-4 text-xs md:text-sm font-bold">
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Documentation</li>
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Technical Audits</li>
+                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">API Reference</li>
                 </ul>
             </div>
             <div>
-                <h4 className="text-white font-black text-lg mb-10 tracking-wide uppercase text-xs">Contact</h4>
-                <div className="space-y-3">
-                    <p className="text-sm font-bold text-slate-300">Whatsapp : +8801946406095</p>
-                    <p className="text-sm font-bold text-slate-300 underline underline-offset-4 decoration-blue-500/50">Email : mehedihasanajmir1000@gmail.com</p>
+                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Contact</h4>
+                <div className="space-y-4">
+                    <p className="text-xs md:text-sm font-bold text-slate-300">Whatsapp : +8801946406095</p>
+                    <p className="text-xs md:text-sm font-bold text-slate-300 break-all underline underline-offset-4 decoration-blue-500/50">mehedihasanajmir1000@gmail.com</p>
                 </div>
             </div>
         </div>
-        <div className="max-w-7xl mx-auto px-4 border-t border-slate-800/60 pt-12 flex flex-col md:flex-row justify-between items-center gap-10 text-center md:text-left">
+        <div className="max-w-7xl mx-auto px-6 border-t border-slate-800/60 pt-12 flex flex-col md:flex-row justify-between items-center gap-10 text-center md:text-left">
             <div className="space-y-2">
-                <p className="text-sm font-black text-slate-400 tracking-wide uppercase">Mehedi Hasan, the owner of this website,</p>
-                <p className="text-xs font-bold text-slate-600 tracking-wider">© 2005 DS SERVICE STORE. ALL RIGHTS RESERVED.</p>
+                <p className="text-[10px] md:text-xs font-black text-slate-400 tracking-widest uppercase">Mehedi Hasan, the owner of this website</p>
+                <p className="text-[9px] md:text-[10px] font-bold text-slate-600 tracking-widest">© 2005 DS SERVICE STORE. ALL RIGHTS RESERVED.</p>
             </div>
-            <div className="flex gap-8 items-center opacity-30">
+            <div className="flex flex-wrap justify-center gap-6 md:gap-8 items-center opacity-30">
                 <img src="https://logowik.com/content/uploads/images/binance-black-icon5996.logowik.com.webp" className="h-5 w-auto grayscale contrast-125" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-3 w-auto grayscale" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-2.5 w-auto grayscale" />
                 <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-4 w-auto grayscale" />
                 <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" className="h-4 w-auto grayscale" />
             </div>
