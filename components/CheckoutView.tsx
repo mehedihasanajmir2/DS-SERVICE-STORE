@@ -26,6 +26,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
   // Proof fields
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const binancePayId = "573432978";
@@ -46,13 +47,24 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
       fullName.trim().length > 0 &&
       whatsappNumber.length === 11 && 
       deliveryEmail.trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) &&
-      agreedToTerms // Must agree to terms
+      agreedToTerms
     );
   }, [paymentMethod, fullName, whatsappNumber, deliveryEmail, agreedToTerms]);
 
   const isProofValid = useMemo(() => {
     return transactionId.trim().length > 0 && screenshot !== null;
   }, [transactionId, screenshot]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setScreenshot(file);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  };
 
   const handleProceedToProof = () => {
     if (!isDetailsValid) return;
@@ -280,32 +292,61 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
             </div>
           ) : (
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-10 shadow-sm animate-in slide-in-from-right duration-500">
-              <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="text-center mb-10">
+                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-indigo-100/50">
                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mb-2">Payment Verification</h2>
-                <p className="text-slate-500 font-medium">Please provide the transaction proof below.</p>
+                <p className="text-slate-500 font-medium">Please provide the transaction proof below to confirm your order.</p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Transaction ID</label>
-                  <input type="text" placeholder="Paste TxID here..." className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-black tracking-widest" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Transaction ID / Reference</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter your Transaction ID here..." 
+                    className="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-[1.5rem] outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 font-black tracking-widest transition-all" 
+                    value={transactionId} 
+                    onChange={(e) => setTransactionId(e.target.value)} 
+                  />
                 </div>
 
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`h-48 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all ${screenshot ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:bg-slate-50'}`}
-                >
-                  {screenshot ? (
-                    <p className="font-bold text-green-600">{screenshot.name}</p>
-                  ) : (
-                    <p className="font-black text-slate-900">Upload Screenshot</p>
-                  )}
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} />
+                <div className="space-y-3">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Payment Screenshot</label>
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative min-h-[220px] rounded-[2.5rem] border-4 border-dashed transition-all group overflow-hidden flex flex-col items-center justify-center cursor-pointer
+                      ${previewUrl ? 'border-green-400 bg-white' : 'border-slate-100 bg-slate-50/50 hover:border-indigo-400 hover:bg-indigo-50/30'}
+                    `}
+                  >
+                    {previewUrl ? (
+                      <div className="absolute inset-0 w-full h-full">
+                        <img src={previewUrl} className="w-full h-full object-cover" alt="Screenshot Preview" />
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                          <svg className="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span className="font-black uppercase tracking-widest text-[10px]">Change Screenshot</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center space-y-4">
+                        <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto text-slate-300 group-hover:text-indigo-500 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                           </svg>
+                        </div>
+                        <div>
+                          <p className="font-black text-slate-900 text-lg">Click to Upload</p>
+                          <p className="text-xs font-bold text-slate-400 mt-1">PNG, JPG or JPEG up to 10MB</p>
+                        </div>
+                      </div>
+                    )}
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -336,7 +377,15 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                   : 'bg-white text-slate-900 hover:bg-cyan-400'}
               `}
             >
-              {isProcessing ? 'Processing...' : (step === 'details' ? 'Confirm & Next' : 'Complete Order')}
+              {isProcessing ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-slate-900" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </div>
+              ) : (step === 'details' ? 'Confirm & Next' : 'Complete Order')}
             </button>
             
             <p className="mt-6 text-[10px] text-center text-slate-500 font-black uppercase tracking-widest">
