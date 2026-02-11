@@ -308,15 +308,11 @@ const App: React.FC = () => {
             <div className="relative rounded-[2.5rem] overflow-hidden min-h-[450px] flex items-center shadow-2xl border border-white/10"
               style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
               <div className="absolute inset-0 bg-slate-900/80"></div>
-              <div className="relative z-10 px-8 md:px-16 w-full lg:w-2/3">
+              <div className="relative z-10 px-8 md:px-16 w-full lg:w-2/3 text-center md:text-left">
                 <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">DS <span className="text-cyan-400">SERVICE STORE</span></h1>
                 <p className="text-sm font-black text-blue-200 uppercase tracking-[0.3em] mb-8">Verified Premium Digital Ecosystem</p>
-                <div className="flex flex-wrap gap-4">
-                  <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all">Shop Services</button>
-                  <button onClick={() => setShowAiModal(true)} className="px-10 py-4 bg-slate-900/50 backdrop-blur border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center gap-3">
-                    <svg className="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.5 9H22L16 14L18.5 21L12 17L5.5 21L8 14L2 9H9.5L12 2Z"/></svg>
-                    Consult AI Assistant
-                  </button>
+                <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                  <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all shadow-lg active:scale-95">Shop Services Now</button>
                 </div>
               </div>
             </div>
@@ -368,6 +364,23 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* Floating AI Consultant Button with Robot Icon */}
+      <button 
+        onClick={() => setShowAiModal(true)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 md:w-16 md:h-16 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-600 transition-all hover:scale-110 active:scale-90 border-2 border-white/10 group overflow-hidden"
+        aria-label="Consult AI Assistant"
+      >
+        <div className="absolute inset-0 rounded-full border-2 border-cyan-400 border-t-transparent animate-[spin_4s_linear_infinite] group-hover:animate-none opacity-50"></div>
+        <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+          {/* Robot SVG */}
+          <svg viewBox="0 0 24 24" className="w-full h-full text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" fill="currentColor">
+            <path d="M12,2A2,2 0 0,1 14,4V5H15A2,2 0 0,1 17,7V11H18A2,2 0 0,1 20,13V17A2,2 0 0,1 18,19H17V21A2,2 0 0,1 15,23H9A2,2 0 0,1 7,21V19H6A2,2 0 0,1 4,17V13A2,2 0 0,1 6,11H7V7A2,2 0 0,1 9,5H10V4A2,2 0 0,1 12,2M9,7V17H15V7H9M12,10A1,1 0 0,1 13,11A1,1 0 0,1 12,12A1,1 0 0,1 11,11A1,1 0 0,1 12,10M9,18V21H15V18H9Z" />
+          </svg>
+          {/* Letter M on Chest */}
+          <span className="absolute top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] md:text-[11px] font-black text-slate-900 select-none tracking-tighter">M</span>
+        </div>
+      </button>
+
       {/* AI Assistant Modal */}
       {showAiModal && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
@@ -384,7 +397,7 @@ const App: React.FC = () => {
             <div className="p-8 space-y-6">
               <p className="text-slate-500 font-medium">Tell us about your business or needs, and our AI will suggest the best digital services for you.</p>
               <textarea 
-                className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold resize-none"
+                className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold resize-none text-slate-900"
                 placeholder="e.g. I need to verify my Apple developer account and need some business emails..."
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
