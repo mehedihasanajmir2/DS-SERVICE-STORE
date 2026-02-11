@@ -26,7 +26,6 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update'>('signin');
   const [loading, setLoading] = useState(true);
   
-  // Admin Specific States
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminPassModal, setShowAdminPassModal] = useState(false);
   const [adminInputPass, setAdminInputPass] = useState('');
@@ -37,24 +36,40 @@ const App: React.FC = () => {
   const lastClickTime = useRef(0);
   const ADMIN_PASSWORD = "Ajmir@#123";
 
-  // ডাটা লোড করার ফাংশন
+  // ডাটাবেস থেকে ডাটা ম্যাপ করে আনার ফাংশন
   const fetchData = async () => {
     try {
-      // লোড প্রোডাক্টস
       const { data: dbProducts } = await supabase
         .from('products')
         .select('*')
         .order('name', { ascending: true });
       if (dbProducts) setProducts(dbProducts);
 
-      // লোড অর্ডারস (শুধুমাত্র এডমিন বা লগইন ইউজারদের জন্য হতে পারে, এখানে সবার জন্য লোড করা হচ্ছে এডমিন প্যানেলের সুবিধার্থে)
-      const { data: dbOrders } = await supabase
+      // অর্ডার আনার সময় ডাটাবেসের snake_case কে frontend এর camelCase এ ম্যাপ করছি
+      const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
-        .select('*')
-        .order('createdAt', { ascending: false });
-      if (dbOrders) setOrders(dbOrders);
+        .select(`
+          id, 
+          userId:user_id, 
+          items, 
+          total, 
+          status, 
+          createdAt:created_at, 
+          fullName:full_name, 
+          whatsappNumber:whatsapp_number, 
+          deliveryEmail:delivery_email, 
+          paymentMethod:payment_method, 
+          transactionId:transaction_id
+        `)
+        .order('created_at', { ascending: false });
+
+      if (orderError) {
+        console.error("Order Fetch Error:", orderError);
+      } else if (dbOrders) {
+        setOrders(dbOrders as unknown as Order[]);
+      }
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("General Fetch Error:", err);
     }
   };
 
@@ -152,24 +167,43 @@ const App: React.FC = () => {
     }
   };
 
-  // অর্ডার সেভ করার আপডেট করা লজিক
+  // অর্ডার সেভ করার সময় সঠিক snake_case কলাম ব্যবহার করা হচ্ছে
   const handlePlaceOrder = async (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
     const orderData = {
-      ...orderInfo,
-      userId: user?.id || 'guest',
-      createdAt: new Date().toISOString(),
+      user_id: user?.id || 'guest',
+      items: orderInfo.items,
+      total: orderInfo.total,
+      status: orderInfo.status,
+      full_name: orderInfo.fullName,
+      whatsapp_number: orderInfo.whatsappNumber,
+      delivery_email: orderInfo.deliveryEmail,
+      payment_method: orderInfo.paymentMethod,
+      transaction_id: orderInfo.transactionId,
+      created_at: new Date().toISOString(),
     };
 
     try {
       const { data, error } = await supabase
         .from('orders')
         .insert([orderData])
-        .select();
+        .select(`
+          id, 
+          userId:user_id, 
+          items, 
+          total, 
+          status, 
+          createdAt:created_at, 
+          fullName:full_name, 
+          whatsappNumber:whatsapp_number, 
+          deliveryEmail:delivery_email, 
+          paymentMethod:payment_method, 
+          transactionId:transaction_id
+        `);
 
       if (error) throw error;
 
       if (data) {
-        setOrders(prev => [data[0], ...prev]);
+        setOrders(prev => [data[0] as unknown as Order, ...prev]);
         alert("✅ Order Placed Successfully! Your order is being verified.");
         setCart([]);
         resetToShop();
@@ -254,7 +288,6 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {currentView === 'shop' ? (
           <div className="space-y-12">
-            {/* HERO SECTION */}
             <div className="relative rounded-[2.5rem] overflow-hidden min-h-[450px] flex items-center shadow-2xl border border-white/10"
               style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
               <div className="absolute inset-0 bg-slate-900/80"></div>
