@@ -42,7 +42,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
     return (
       paymentMethod !== null &&
       fullName.trim().length > 0 &&
-      whatsappNumber.trim().length > 0 &&
+      whatsappNumber.length === 11 && // Exactly 11 digits required
       deliveryEmail.trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
     );
   }, [paymentMethod, fullName, whatsappNumber, deliveryEmail]);
@@ -66,23 +66,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
     setIsProcessing(true);
     
     try {
-      // 1. Upload Screenshot to Supabase Storage
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `payment-proofs/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('products') // Using the existing 'products' bucket or you can create 'orders'
+        .from('products')
         .upload(filePath, screenshot);
 
       if (uploadError) throw uploadError;
 
-      // 2. Get Public URL
       const { data: urlData } = supabase.storage
         .from('products')
         .getPublicUrl(filePath);
 
-      // 3. Submit Order Data
       onSuccess({
         items,
         total: totalAmount,
@@ -268,13 +265,21 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
                       />
-                      <input 
-                        type="text" 
-                        placeholder="Whatsapp Number" 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all"
-                        value={whatsappNumber}
-                        onChange={(e) => setWhatsappNumber(e.target.value)}
-                      />
+                      <div className="relative">
+                        <input 
+                          type="tel" 
+                          placeholder="Whatsapp Number (11 Digits)" 
+                          maxLength={11}
+                          className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all ${whatsappNumber.length > 0 && whatsappNumber.length < 11 ? 'border-amber-400' : 'border-slate-200'}`}
+                          value={whatsappNumber}
+                          onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 11))}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          <span className={`text-[10px] font-black uppercase ${whatsappNumber.length === 11 ? 'text-green-500' : 'text-slate-400'}`}>
+                            {whatsappNumber.length}/11
+                          </span>
+                        </div>
+                      </div>
                       <input 
                         type="email" 
                         placeholder="Delivery Email Address" 
@@ -283,6 +288,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                         onChange={(e) => setDeliveryEmail(e.target.value)}
                       />
                   </div>
+                  {whatsappNumber.length > 0 && whatsappNumber.length < 11 && (
+                    <p className="text-[10px] text-amber-600 font-bold uppercase tracking-widest animate-pulse">
+                      WhatsApp number must be exactly 11 digits
+                    </p>
+                  )}
               </div>
             </div>
           ) : (
@@ -412,7 +422,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
             
             {step === 'details' && !isDetailsValid && (
               <p className="mt-4 text-[10px] text-center text-amber-500 font-bold uppercase tracking-widest animate-pulse">
-                Complete all fields to proceed
+                {whatsappNumber.length > 0 && whatsappNumber.length < 11 
+                  ? 'WhatsApp Number must be 11 digits' 
+                  : 'Complete all fields to proceed'}
               </p>
             )}
             

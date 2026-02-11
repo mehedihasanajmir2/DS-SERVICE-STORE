@@ -51,26 +51,27 @@ const App: React.FC = () => {
 
       const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
-        .select(`
-          id, 
-          userId:user_id, 
-          items, 
-          total, 
-          status, 
-          createdAt:created_at, 
-          fullName:full_name, 
-          whatsappNumber:whatsapp_number, 
-          deliveryEmail:delivery_email, 
-          paymentMethod:payment_method, 
-          transactionId:transaction_id,
-          screenshotUrl:screenshot_url
-        `)
+        .select(`*`)
         .order('created_at', { ascending: false });
 
       if (orderError) {
         console.error("Order Fetch Error:", orderError);
       } else if (dbOrders) {
-        setOrders(dbOrders as unknown as Order[]);
+        const mappedOrders = dbOrders.map((o: any) => ({
+          id: o.id,
+          userId: o.user_id,
+          items: o.items,
+          total: o.total,
+          status: o.status,
+          createdAt: o.created_at,
+          fullName: o.full_name,
+          whatsappNumber: o.whatsapp_number,
+          deliveryEmail: o.delivery_email,
+          paymentMethod: o.payment_method,
+          transactionId: o.transaction_id,
+          screenshotUrl: o.screenshot_url
+        }));
+        setOrders(mappedOrders as Order[]);
       }
     } catch (err) {
       console.error("General Fetch Error:", err);
@@ -172,7 +173,8 @@ const App: React.FC = () => {
   };
 
   const handlePlaceOrder = async (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
-    const orderData = {
+    // ডাটাবেস কলাম অনুযায়ী ডাটা অবজেক্ট তৈরি
+    const orderData: any = {
       user_id: user?.id || 'guest',
       items: orderInfo.items,
       total: orderInfo.total,
@@ -182,40 +184,63 @@ const App: React.FC = () => {
       delivery_email: orderInfo.deliveryEmail,
       payment_method: orderInfo.paymentMethod,
       transaction_id: orderInfo.transactionId,
-      screenshot_url: orderInfo.screenshotUrl,
       created_at: new Date().toISOString(),
     };
 
+    // শুধুমাত্র কলামটি থাকলে screenshot_url অ্যাড হবে
+    if (orderInfo.screenshotUrl) {
+      orderData.screenshot_url = orderInfo.screenshotUrl;
+    }
+
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('orders')
         .insert([orderData])
-        .select(`
-          id, 
-          userId:user_id, 
-          items, 
-          total, 
-          status, 
-          createdAt:created_at, 
-          fullName:full_name, 
-          whatsappNumber:whatsapp_number, 
-          deliveryEmail:delivery_email, 
-          paymentMethod:payment_method, 
-          transactionId:transaction_id,
-          screenshotUrl:screenshot_url
-        `);
+        .select('*');
+
+      // যদি screenshot_url কলামটি না থাকে এবং তার কারণে এরর আসে
+      if (error && (error.message.includes("screenshot_url") || error.message.includes("column"))) {
+        console.warn("Screenshot column missing, retrying without it...");
+        // screenshot_url ছাড়াই আবার ট্রাই করা হচ্ছে
+        const { screenshot_url, ...fallbackData } = orderData;
+        const retry = await supabase
+          .from('orders')
+          .insert([fallbackData])
+          .select('*');
+        
+        data = retry.data;
+        error = retry.error;
+        
+        if (!error) {
+            alert("⚠️ Order placed, but screenshot couldn't be saved because database needs update. Please inform admin.");
+        }
+      }
 
       if (error) throw error;
 
       if (data) {
-        setOrders(prev => [data[0] as unknown as Order, ...prev]);
+        const newOrder: Order = {
+          id: data[0].id,
+          userId: data[0].user_id,
+          items: data[0].items,
+          total: data[0].total,
+          status: data[0].status,
+          createdAt: data[0].created_at,
+          fullName: data[0].full_name,
+          whatsappNumber: data[0].whatsapp_number,
+          deliveryEmail: data[0].delivery_email,
+          paymentMethod: data[0].payment_method,
+          transactionId: data[0].transaction_id,
+          screenshotUrl: data[0].screenshot_url
+        };
+        setOrders(prev => [newOrder, ...prev]);
         alert("✅ Order Placed Successfully! Your order is being verified.");
         setCart([]);
         resetToShop();
       }
     } catch (err: any) {
       console.error("Order error:", err);
-      alert("❌ Failed to place order. Error: " + err.message);
+      alert("❌ Failed to place order: " + err.message);
     }
   };
 
