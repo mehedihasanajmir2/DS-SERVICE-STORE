@@ -27,6 +27,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
@@ -49,14 +50,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const fileName = `${Math.random()}.${fileExt}`;
       const filePath = `product-images/${fileName}`;
 
-      // 1. Upload the file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('products')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Get the public URL
       const { data } = supabase.storage
         .from('products')
         .getPublicUrl(filePath);
@@ -158,7 +157,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </h2>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                {/* Left: Basic Info */}
                 <div className="lg:col-span-2 space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Service Name</label>
@@ -214,7 +212,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                {/* Right: Pricing & Preview */}
                 <div className="space-y-6">
                   <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Image Preview</label>
@@ -275,20 +272,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <td className="px-8 py-5 font-black text-slate-400 text-sm">{p.stock} Units</td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => handleEditClick(p)}
-                            className="p-3 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                            title="Edit Service"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M18.364 5.364a2.121 2.121 0 013 3L12 18l-4 1 1-4L18.364 5.364z" /></svg>
-                          </button>
-                          <button 
-                            onClick={() => { if(confirm('Delete this service permanently?')) onDeleteProduct(p.id); }}
-                            className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                            title="Delete Service"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                          </button>
+                          <button onClick={() => handleEditClick(p)} className="p-3 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M18.364 5.364a2.121 2.121 0 013 3L12 18l-4 1 1-4L18.364 5.364z" /></svg></button>
+                          <button onClick={() => { if(confirm('Delete this service permanently?')) onDeleteProduct(p.id); }} className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                         </div>
                       </td>
                     </tr>
@@ -320,32 +305,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </tr>
                 ) : (
                   orders.map(order => (
-                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                    <tr 
+                      key={order.id} 
+                      className="hover:bg-blue-50/50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedOrder(order)}
+                    >
                       <td className="px-8 py-6">
                         <div className="flex flex-col gap-1">
                           <span className="text-xs font-black text-slate-900">{new Date(order.createdAt).toLocaleString()}</span>
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {order.id.slice(0, 8)}</span>
-                          <div className="mt-2 flex gap-1 flex-wrap">
-                            {order.items.map((item, idx) => (
-                              <span key={idx} className="bg-blue-50 text-blue-600 text-[9px] px-2 py-0.5 rounded-md font-bold">
-                                {item.name} (x{item.quantity})
-                              </span>
-                            ))}
-                          </div>
                         </div>
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex flex-col">
                           <span className="text-sm font-black text-slate-900">{order.fullName}</span>
                           <span className="text-[10px] font-bold text-blue-600">{order.whatsappNumber}</span>
-                          <span className="text-[10px] font-bold text-slate-400">{order.deliveryEmail}</span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex flex-col">
                           <span className="text-lg font-black text-slate-900">${order.total.toFixed(2)}</span>
-                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">via {order.paymentMethod}</span>
-                          <span className="text-[9px] font-mono text-cyan-600 truncate max-w-[100px]">TxID: {order.transactionId}</span>
+                          <span className="text-[9px] font-black uppercase text-slate-400 tracking-tighter">{order.paymentMethod}</span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
@@ -359,7 +339,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </span>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
                           {order.status === 'pending' && (
                             <button 
                               onClick={() => onUpdateOrderStatus(order.id, 'confirmed')}
@@ -368,19 +348,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               Confirm
                             </button>
                           )}
-                          {order.status === 'confirmed' && (
-                            <button 
-                              onClick={() => onUpdateOrderStatus(order.id, 'delivered')}
-                              className="px-4 py-2 bg-green-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-green-700 shadow-md transition-all"
-                            >
-                              Deliver
-                            </button>
-                          )}
                           <button 
-                            onClick={() => onUpdateOrderStatus(order.id, 'cancelled')}
-                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                            onClick={() => setSelectedOrder(order)}
+                            className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                           </button>
                         </div>
                       </td>
@@ -389,6 +361,120 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onClick={() => setSelectedOrder(null)} />
+          <div className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-8 border-b border-slate-100">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Order Details</h2>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Order ID: {selectedOrder.id}</p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-slate-200 transition-all">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 lg:p-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                {/* Left Col: Info */}
+                <div className="space-y-10">
+                  <section>
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Customer Info</h3>
+                    <div className="space-y-4">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Full Name</span>
+                        <span className="text-lg font-black text-slate-900">{selectedOrder.fullName}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-400 uppercase">WhatsApp</span>
+                        <span className="text-lg font-black text-blue-600 underline cursor-pointer">{selectedOrder.whatsappNumber}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-slate-400 uppercase">Delivery Email</span>
+                        <span className="text-lg font-black text-slate-900">{selectedOrder.deliveryEmail}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Payment Details</h3>
+                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black text-slate-400 uppercase">Method</span>
+                        <span className="text-sm font-black text-slate-900">{selectedOrder.paymentMethod}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black text-slate-400 uppercase">Trx ID / Order ID</span>
+                        <span className="text-sm font-black text-cyan-600 font-mono tracking-widest">{selectedOrder.transactionId}</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+                        <span className="text-xs font-black text-slate-400 uppercase">Total Amount</span>
+                        <span className="text-2xl font-black text-slate-900">${selectedOrder.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Ordered Items</h3>
+                    <div className="space-y-3">
+                      {selectedOrder.items.map((item, i) => (
+                        <div key={i} className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <span className="text-xs font-black text-slate-900">{item.name} <span className="text-slate-400 ml-1">(x{item.quantity})</span></span>
+                          <span className="text-xs font-black text-blue-600">${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                {/* Right Col: Screenshot */}
+                <div>
+                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Payment Proof</h3>
+                  {selectedOrder.screenshotUrl ? (
+                    <div className="relative group">
+                      <div className="rounded-[2rem] overflow-hidden border border-slate-200 bg-slate-50 shadow-inner">
+                        <img 
+                          src={selectedOrder.screenshotUrl} 
+                          alt="Payment Proof" 
+                          className="w-full h-auto object-contain cursor-zoom-in transition-transform group-hover:scale-105 duration-500"
+                          onClick={() => window.open(selectedOrder.screenshotUrl, '_blank')}
+                        />
+                      </div>
+                      <p className="text-center text-[10px] font-black text-slate-400 uppercase mt-4">Click Image to View Full Size</p>
+                    </div>
+                  ) : (
+                    <div className="h-64 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300">
+                      <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      <span className="text-xs font-black uppercase tracking-widest">No Screenshot Provided</span>
+                    </div>
+                  )}
+
+                  <div className="mt-12 space-y-4">
+                    <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => { onUpdateOrderStatus(selectedOrder.id, 'confirmed'); setSelectedOrder(null); }}
+                        className="py-4 bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-green-700 shadow-xl shadow-green-200 transition-all"
+                      >
+                        Approve Order
+                      </button>
+                      <button 
+                        onClick={() => { onUpdateOrderStatus(selectedOrder.id, 'cancelled'); setSelectedOrder(null); }}
+                        className="py-4 bg-red-50 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-100 transition-all"
+                      >
+                        Cancel Order
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

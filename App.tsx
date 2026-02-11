@@ -38,7 +38,6 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // প্রোডাক্ট নিয়ে আসা
       const { data: dbProducts, error: prodError } = await supabase
         .from('products')
         .select('*')
@@ -46,15 +45,10 @@ const App: React.FC = () => {
       
       if (prodError) {
         console.error("Product Fetch Error:", prodError);
-        // যদি টেবিল খুঁজে না পায় বা অন্য কোনো সমস্যা হয়
-        if (prodError.code === '42P01') {
-          console.warn("Table 'products' does not exist. Using initial data.");
-        }
       } else if (dbProducts && dbProducts.length > 0) {
         setProducts(dbProducts);
       }
 
-      // অর্ডার নিয়ে আসা
       const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -68,7 +62,8 @@ const App: React.FC = () => {
           whatsappNumber:whatsapp_number, 
           deliveryEmail:delivery_email, 
           paymentMethod:payment_method, 
-          transactionId:transaction_id
+          transactionId:transaction_id,
+          screenshotUrl:screenshot_url
         `)
         .order('created_at', { ascending: false });
 
@@ -187,6 +182,7 @@ const App: React.FC = () => {
       delivery_email: orderInfo.deliveryEmail,
       payment_method: orderInfo.paymentMethod,
       transaction_id: orderInfo.transactionId,
+      screenshot_url: orderInfo.screenshotUrl,
       created_at: new Date().toISOString(),
     };
 
@@ -205,7 +201,8 @@ const App: React.FC = () => {
           whatsappNumber:whatsapp_number, 
           deliveryEmail:delivery_email, 
           paymentMethod:payment_method, 
-          transactionId:transaction_id
+          transactionId:transaction_id,
+          screenshotUrl:screenshot_url
         `);
 
       if (error) throw error;

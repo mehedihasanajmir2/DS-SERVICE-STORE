@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { CartItem, Order } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface CheckoutViewProps {
   items: CartItem[];
@@ -56,16 +57,32 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleFinalSubmit = () => {
-    if (!isProofValid) {
-      alert(`Please enter your ${paymentMethod === 'crypto' ? 'Binance TxID' : 'Transaction ID'} and upload a screenshot.`);
+  const handleFinalSubmit = async () => {
+    if (!isProofValid || !screenshot) {
+      alert(`Please enter your transaction ID and upload a screenshot.`);
       return;
     }
+    
     setIsProcessing(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      // 1. Upload Screenshot to Supabase Storage
+      const fileExt = screenshot.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `payment-proofs/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products') // Using the existing 'products' bucket or you can create 'orders'
+        .upload(filePath, screenshot);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data: urlData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      // 3. Submit Order Data
       onSuccess({
         items,
         total: totalAmount,
@@ -74,9 +91,15 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
         whatsappNumber,
         deliveryEmail,
         paymentMethod: paymentMethod === 'crypto' ? 'Binance' : 'Mobile Banking',
-        transactionId
+        transactionId,
+        screenshotUrl: urlData.publicUrl
       });
-    }, 2500);
+    } catch (error: any) {
+      console.error("Checkout Error:", error);
+      alert("Failed to process payment proof: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const copyToClipboard = (text: string, id: string) => {

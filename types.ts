@@ -33,6 +33,7 @@ export interface Order {
   deliveryEmail: string;
   paymentMethod: string;
   transactionId: string;
+  screenshotUrl?: string;
 }
 
 export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin';
