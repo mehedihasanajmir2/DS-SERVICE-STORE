@@ -36,16 +36,25 @@ const App: React.FC = () => {
   const lastClickTime = useRef(0);
   const ADMIN_PASSWORD = "Ajmir@#123";
 
-  // ডাটাবেস থেকে ডাটা ম্যাপ করে আনার ফাংশন
   const fetchData = async () => {
     try {
-      const { data: dbProducts } = await supabase
+      // প্রোডাক্ট নিয়ে আসা
+      const { data: dbProducts, error: prodError } = await supabase
         .from('products')
         .select('*')
         .order('name', { ascending: true });
-      if (dbProducts) setProducts(dbProducts);
+      
+      if (prodError) {
+        console.error("Product Fetch Error:", prodError);
+        // যদি টেবিল খুঁজে না পায় বা অন্য কোনো সমস্যা হয়
+        if (prodError.code === '42P01') {
+          console.warn("Table 'products' does not exist. Using initial data.");
+        }
+      } else if (dbProducts && dbProducts.length > 0) {
+        setProducts(dbProducts);
+      }
 
-      // অর্ডার আনার সময় ডাটাবেসের snake_case কে frontend এর camelCase এ ম্যাপ করছি
+      // অর্ডার নিয়ে আসা
       const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
         .select(`
@@ -167,7 +176,6 @@ const App: React.FC = () => {
     }
   };
 
-  // অর্ডার সেভ করার সময় সঠিক snake_case কলাম ব্যবহার করা হচ্ছে
   const handlePlaceOrder = async (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
     const orderData = {
       user_id: user?.id || 'guest',
@@ -307,11 +315,21 @@ const App: React.FC = () => {
               <input type="text" placeholder="Search..." className="w-full lg:w-72 px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-20">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} onAddToCart={(p) => handleAddToCart(p, 1)} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
-              ))}
-            </div>
+            {filteredProducts.length === 0 ? (
+              <div className="py-20 text-center bg-white rounded-[2rem] border-2 border-dashed border-slate-200">
+                <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v2m4.688 4.406A4.948 4.948 0 0011 15.19c-.066.002-.132.005-.198.005a4.978 4.978 0 00-2.522.682M10.5 21l-2-2m2 2l2-2m-2 2V15" /></svg>
+                </div>
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">No Services Found</h3>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Try another category or search term.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-20">
+                {filteredProducts.map(product => (
+                  <ProductCard key={product.id} product={product} onAddToCart={(p) => handleAddToCart(p, 1)} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
+                ))}
+              </div>
+            )}
           </div>
         ) : currentView === 'product-detail' && selectedProduct ? (
           <ProductDetail product={selectedProduct} onAddToCart={handleAddToCart} onBack={resetToShop} />
