@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Product, Order } from '../types';
 import { CATEGORIES } from '../constants';
+import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
   products: Product[];
@@ -25,6 +26,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders'>('inventory');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -35,6 +38,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     stock: 10,
     rating: 5
   });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      if (!e.target.files || e.target.files.length === 0) return;
+      
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `product-images/${fileName}`;
+
+      // 1. Upload the file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get the public URL
+      const { data } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      if (data) {
+        setFormData({ ...formData, image: data.publicUrl });
+        alert("✅ Image uploaded successfully!");
+      }
+    } catch (error: any) {
+      alert("Error uploading image: " + error.message);
+      console.error(error);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleEditClick = (product: Product) => {
     setEditingId(product.id);
@@ -139,8 +176,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Image URL</label>
-                      <input required type="url" className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-bold" value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} placeholder="https://example.com/photo.jpg" />
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Product Image</label>
+                      <div className="flex gap-3">
+                        <input 
+                          type="url" 
+                          className="flex-1 px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-blue-600 font-bold" 
+                          value={formData.image} 
+                          onChange={e => setFormData({...formData, image: e.target.value})} 
+                          placeholder="Paste URL or upload →" 
+                        />
+                        <button 
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`px-4 rounded-2xl flex items-center justify-center transition-all border-2 border-dashed ${uploading ? 'bg-slate-100 border-slate-200' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'}`}
+                        >
+                          {uploading ? (
+                            <svg className="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </button>
+                        <input 
+                          type="file" 
+                          ref={fileInputRef} 
+                          className="hidden" 
+                          accept="image/*" 
+                          onChange={handleFileUpload} 
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -172,7 +241,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <button type="submit" className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all">
+                  <button type="submit" disabled={uploading} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50">
                     {editingId ? 'Save Changes' : 'Publish Listing'}
                   </button>
                 </div>

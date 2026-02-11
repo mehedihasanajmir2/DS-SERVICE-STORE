@@ -37,6 +37,27 @@ const App: React.FC = () => {
   const lastClickTime = useRef(0);
   const ADMIN_PASSWORD = "Ajmir@#123";
 
+  // ডাটা লোড করার ফাংশন
+  const fetchData = async () => {
+    try {
+      // লোড প্রোডাক্টস
+      const { data: dbProducts } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+      if (dbProducts) setProducts(dbProducts);
+
+      // লোড অর্ডারস (শুধুমাত্র এডমিন বা লগইন ইউজারদের জন্য হতে পারে, এখানে সবার জন্য লোড করা হচ্ছে এডমিন প্যানেলের সুবিধার্থে)
+      const { data: dbOrders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('createdAt', { ascending: false });
+      if (dbOrders) setOrders(dbOrders);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    }
+  };
+
   useEffect(() => {
     const initialize = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -66,19 +87,8 @@ const App: React.FC = () => {
         }
       });
 
-      try {
-        const { data: dbProducts, error } = await supabase
-          .from('products')
-          .select('*')
-          .order('name', { ascending: true });
-        if (!error && dbProducts && dbProducts.length > 0) {
-          setProducts(dbProducts);
-        }
-      } catch (err) {
-        console.error("Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
+      await fetchData();
+      setLoading(false);
       return () => subscription.unsubscribe();
     };
     initialize();
@@ -142,22 +152,48 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePlaceOrder = (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
-    const newOrder: Order = {
+  // অর্ডার সেভ করার আপডেট করা লজিক
+  const handlePlaceOrder = async (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
+    const orderData = {
       ...orderInfo,
-      id: Math.random().toString(36).substr(2, 9),
       userId: user?.id || 'guest',
       createdAt: new Date().toISOString(),
     };
-    setOrders(prev => [newOrder, ...prev]);
-    alert("✅ Order Placed Successfully! Please wait for admin verification.");
-    setCart([]);
-    resetToShop();
+
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select();
+
+      if (error) throw error;
+
+      if (data) {
+        setOrders(prev => [data[0], ...prev]);
+        alert("✅ Order Placed Successfully! Your order is being verified.");
+        setCart([]);
+        resetToShop();
+      }
+    } catch (err: any) {
+      console.error("Order error:", err);
+      alert("❌ Failed to place order. Error: " + err.message);
+    }
   };
 
-  const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
-    alert(`✅ Order marked as ${status.toUpperCase()}`);
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      alert(`✅ Order marked as ${status.toUpperCase()}`);
+    } catch (err: any) {
+      alert("❌ Failed to update status: " + err.message);
+    }
   };
 
   const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
