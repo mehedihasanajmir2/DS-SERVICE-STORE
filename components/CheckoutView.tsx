@@ -16,6 +16,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
   const [step, setStep] = useState<CheckoutStep>('details');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   // Account Delivery Information State
   const [fullName, setFullName] = useState('');
@@ -42,10 +43,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
     return (
       paymentMethod !== null &&
       fullName.trim().length > 0 &&
-      whatsappNumber.length === 11 && // Exactly 11 digits required
-      deliveryEmail.trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+      whatsappNumber.length === 11 && 
+      deliveryEmail.trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/) &&
+      agreedToTerms // Must agree to terms
     );
-  }, [paymentMethod, fullName, whatsappNumber, deliveryEmail]);
+  }, [paymentMethod, fullName, whatsappNumber, deliveryEmail, agreedToTerms]);
 
   const isProofValid = useMemo(() => {
     return transactionId.trim().length > 0 && screenshot !== null;
@@ -145,7 +147,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                 Payment Method
               </h2>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 gap-4 mb-10">
                 <div className="space-y-4">
                   <button 
                     onClick={() => setPaymentMethod('crypto')}
@@ -167,28 +169,13 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
 
                   {paymentMethod === 'crypto' && (
                     <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-6 text-white border border-white/10 shadow-2xl">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-[#F3BA2F] rounded-lg">
-                            <img src="https://logowik.com/content/uploads/images/binance-black-icon5996.logowik.com.webp" className="w-5 h-5" alt="Binance" />
-                          </div>
-                          <h4 className="text-sm font-black uppercase tracking-widest text-white">Binance Payment ID</h4>
-                        </div>
-                        <div className="px-2 py-1 bg-green-500/20 rounded-md">
-                          <span className="text-[10px] font-black text-green-400 uppercase">Verified Recipient</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 group">
+                      <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Send to Pay ID</span>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Pay ID</span>
                           <span className="text-2xl font-black tracking-widest text-cyan-400 font-mono">{binancePayId}</span>
                         </div>
-                        <button 
-                          onClick={() => copyToClipboard(binancePayId, 'binance')}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'binance' ? 'bg-green-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                        >
-                          {copiedId === 'binance' ? 'Copied!' : 'Copy ID'}
+                        <button onClick={() => copyToClipboard(binancePayId, 'binance')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'binance' ? 'bg-green-500' : 'bg-white/10 hover:bg-white/20'}`}>
+                          {copiedId === 'binance' ? 'Copied!' : 'Copy'}
                         </button>
                       </div>
                     </div>
@@ -205,7 +192,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                         <img src="https://www.rainbownetworkbd.com/Theme/images/B%26N.png" className="w-full h-auto object-contain" alt="Bkash & Nagad" />
                       </div>
                       <div className="text-left">
-                        <p className="font-black text-slate-900 text-lg">Only Bangladeshi User</p>
+                        <p className="font-black text-slate-900 text-lg">Mobile Banking</p>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bkash, Nagad</p>
                       </div>
                     </div>
@@ -215,138 +202,95 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                   </button>
 
                   {paymentMethod === 'ssl' && (
-                    <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-8 text-white border border-white/10 shadow-2xl space-y-8">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <img src="https://static.vecteezy.com/system/resources/previews/068/842/080/non_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png" className="h-8 w-auto" alt="Bkash" />
-                          <h4 className="text-xs font-black uppercase tracking-widest text-pink-500">Bkash</h4>
+                    <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-6 text-white border border-white/10 shadow-2xl space-y-4">
+                      <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Send Money (Personal)</span>
+                          <span className="text-xl font-black tracking-widest text-pink-400 font-mono">{bdNumber}</span>
                         </div>
-                        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bkash Number</span>
-                            <span className="text-xl font-black tracking-widest text-pink-400 font-mono">{bdNumber}</span>
-                          </div>
-                          <button onClick={() => copyToClipboard(bdNumber, 'bkash')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                            {copiedId === 'bkash' ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="h-px bg-white/10 w-full"></div>
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Vertical-Logo.wine.svg" className="h-10 w-auto brightness-150" alt="Nagad" />
-                          <h4 className="text-xs font-black uppercase tracking-widest text-orange-500">Nagad</h4>
-                        </div>
-                        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Nagad Number</span>
-                            <span className="text-xl font-black tracking-widest text-orange-400 font-mono">{bdNumber}</span>
-                          </div>
-                          <button onClick={() => copyToClipboard(bdNumber, 'nagad')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'nagad' ? 'bg-orange-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-                            {copiedId === 'nagad' ? 'Copied!' : 'Copy'}
-                          </button>
-                        </div>
+                        <button onClick={() => copyToClipboard(bdNumber, 'bkash')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500' : 'bg-white/10'}`}>
+                          {copiedId === 'bkash' ? 'Copied!' : 'Copy'}
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-12 space-y-6">
+              <div className="space-y-6">
                   <h2 className="text-xl font-black text-slate-900 mb-8 flex items-center gap-3">
                       <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-sm">2</span>
-                      Account Delivery Information
+                      Delivery Information
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input 
-                        type="text" 
-                        placeholder="Full Name" 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                      />
-                      <div className="relative">
-                        <input 
-                          type="tel" 
-                          placeholder="Whatsapp Number (11 Digits)" 
-                          maxLength={11}
-                          className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all ${whatsappNumber.length > 0 && whatsappNumber.length < 11 ? 'border-amber-400' : 'border-slate-200'}`}
-                          value={whatsappNumber}
-                          onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 11))}
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <span className={`text-[10px] font-black uppercase ${whatsappNumber.length === 11 ? 'text-green-500' : 'text-slate-400'}`}>
-                            {whatsappNumber.length}/11
-                          </span>
-                        </div>
-                      </div>
-                      <input 
-                        type="email" 
-                        placeholder="Delivery Email Address" 
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold md:col-span-2 transition-all"
-                        value={deliveryEmail}
-                        onChange={(e) => setDeliveryEmail(e.target.value)}
-                      />
+                      <input type="text" placeholder="Full Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                      <input type="tel" placeholder="WhatsApp Number (11 Digits)" maxLength={11} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, ''))} />
+                      <input type="email" placeholder="Delivery Email" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold md:col-span-2" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} />
                   </div>
-                  {whatsappNumber.length > 0 && whatsappNumber.length < 11 && (
-                    <p className="text-[10px] text-amber-600 font-bold uppercase tracking-widest animate-pulse">
-                      WhatsApp number must be exactly 11 digits
+              </div>
+
+              {/* Mandatory Notice Box */}
+              <div className="mt-10 p-6 bg-amber-50 border-2 border-amber-200 rounded-[2rem] space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-black uppercase tracking-tight text-amber-900">Delivery Notice</h4>
+                    <p className="text-xs font-bold text-amber-700 mt-1 leading-relaxed">
+                      I understand that the standard delivery time is 1-10 minutes. If my order is not delivered within 10 minutes, I agree to contact support via WhatsApp with my Transaction ID.
                     </p>
-                  )}
+                  </div>
+                </div>
+                
+                <label className="flex items-center gap-3 cursor-pointer group p-3 bg-white rounded-xl border border-amber-100 hover:border-amber-400 transition-all">
+                  <div className="relative">
+                    <input 
+                      type="checkbox" 
+                      className="peer sr-only"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    />
+                    <div className="w-6 h-6 border-2 border-slate-300 rounded-md bg-white peer-checked:bg-amber-600 peer-checked:border-amber-600 transition-all flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-slate-700 uppercase tracking-widest select-none">I agree to the 10-minute delivery terms</span>
+                </label>
               </div>
             </div>
           ) : (
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-10 shadow-sm animate-in slide-in-from-right duration-500">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 mb-2">Confirm Payment</h2>
-                <p className="text-slate-500 font-medium">Please provide your transaction proof for verification.</p>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Payment Verification</h2>
+                <p className="text-slate-500 font-medium">Please provide the transaction proof below.</p>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Transaction ID / Order ID</label>
-                  <input 
-                    type="text" 
-                    placeholder={paymentMethod === 'crypto' ? "Enter Binance TxID..." : "Enter Bkash/Nagad TxID..."}
-                    className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-black text-lg tracking-widest"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                  />
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Transaction ID</label>
+                  <input type="text" placeholder="Paste TxID here..." className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-black tracking-widest" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Payment Screenshot</label>
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`group relative h-48 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden
-                      ${screenshot ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50'}
-                    `}
-                  >
-                    {screenshot ? (
-                      <div className="text-center p-4">
-                        <svg className="w-10 h-10 text-green-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <p className="font-bold text-green-600 truncate max-w-xs">{screenshot.name}</p>
-                        <button onClick={(e) => { e.stopPropagation(); setScreenshot(null); }} className="mt-2 text-xs font-black text-slate-400 hover:text-red-500 uppercase tracking-widest">Remove File</button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                          <svg className="w-6 h-6 text-slate-400 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                          </svg>
-                        </div>
-                        <p className="font-black text-slate-900">Choose Screenshot</p>
-                      </>
-                    )}
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} />
-                  </div>
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`h-48 border-2 border-dashed rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all ${screenshot ? 'border-green-400 bg-green-50' : 'border-slate-200 hover:bg-slate-50'}`}
+                >
+                  {screenshot ? (
+                    <p className="font-bold text-green-600">{screenshot.name}</p>
+                  ) : (
+                    <p className="font-black text-slate-900">Upload Screenshot</p>
+                  )}
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} />
                 </div>
               </div>
             </div>
@@ -357,110 +301,31 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
           <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl sticky top-24">
             <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 border-b border-white/10 pb-4">Order Summary</h2>
             
-            <div className="space-y-6 mb-8 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
-              {items.map(item => (
-                <div key={item.id} className="flex justify-between items-center gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-xl flex-shrink-0 border border-white/10 overflow-hidden">
-                      <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black line-clamp-1">{item.name}</p>
-                      <p className="text-xs font-bold text-slate-400">Qty: {item.quantity}</p>
-                    </div>
-                  </div>
-                  <span className="font-black text-sm">{formatPrice(item.price * item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-4 pt-6 border-t border-white/10">
+            <div className="space-y-4 mb-8">
               <div className="flex justify-between items-center text-slate-400 font-bold text-sm">
                 <span>Subtotal</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
-              {isDiscountEligible && (
-                <div className="flex justify-between items-center text-green-400 font-black text-sm">
-                  <span>Bulk Discount (5%)</span>
-                  <span>-{formatPrice(discount)}</span>
-                </div>
-              )}
               <div className="flex justify-between items-center pt-4 border-t border-white/10">
                 <span className="text-xl font-black">Total Amount</span>
-                <span className="text-3xl font-black text-cyan-400">
-                  {formatPrice(totalAmount)}
-                </span>
+                <span className="text-3xl font-black text-cyan-400">{formatPrice(totalAmount)}</span>
               </div>
             </div>
 
             <button 
               onClick={step === 'details' ? handleProceedToProof : handleFinalSubmit}
               disabled={isProcessing || (step === 'details' && !isDetailsValid) || (step === 'proof' && !isProofValid)}
-              className={`w-full mt-10 py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95
+              className={`w-full py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl
                 ${isProcessing || (step === 'details' && !isDetailsValid) || (step === 'proof' && !isProofValid)
                   ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
-                  : 'bg-white text-slate-900 hover:bg-cyan-400 hover:text-slate-900'}
+                  : 'bg-white text-slate-900 hover:bg-cyan-400'}
               `}
             >
-              {isProcessing ? (
-                <>
-                  <svg className="animate-spin h-6 w-6 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  {step === 'details' ? 'Next: Submit Proof' : 'Verify & Complete Order'}
-                </>
-              )}
+              {isProcessing ? 'Processing...' : (step === 'details' ? 'Confirm & Next' : 'Complete Order')}
             </button>
             
-            {step === 'proof' && (
-              <div className="mt-6 bg-slate-800/50 border border-white/5 rounded-2xl p-5 animate-in fade-in slide-in-from-top-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-[11px] leading-relaxed text-slate-300 font-bold">
-                      যদি ১০ মিনিটের ভেতর আপনার অর্ডারটি কনফার্ম বা ডেলিভারি না করা হয়, তবে সরাসরি আমাদের হোয়াটসঅ্যাপে যোগাযোগ করুন।
-                    </p>
-                    <a 
-                      href="https://wa.me/8801946406095" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 mt-3 text-cyan-400 hover:text-cyan-300 font-black text-xs uppercase tracking-widest transition-colors group"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.937 3.659 1.432 5.631 1.433h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                      </svg>
-                      Contact: +8801946406095
-                      <svg className="w-3 h-3 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-            
-            {step === 'details' && !isDetailsValid && (
-              <p className="mt-4 text-[10px] text-center text-amber-500 font-bold uppercase tracking-widest animate-pulse">
-                {whatsappNumber.length > 0 && whatsappNumber.length < 11 
-                  ? 'WhatsApp Number must be 11 digits' 
-                  : 'Complete all fields to proceed'}
-              </p>
-            )}
-            
             <p className="mt-6 text-[10px] text-center text-slate-500 font-black uppercase tracking-widest">
-              Encrypted SSL Transaction • {paymentMethod === 'crypto' ? 'Powered by Binance Pay' : 'Powered by Bkash & Nagad'}
+              Secure SSL Transaction
             </p>
           </div>
         </div>
