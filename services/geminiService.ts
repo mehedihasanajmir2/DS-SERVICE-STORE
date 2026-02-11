@@ -2,9 +2,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { Product } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export async function getProductRecommendations(query: string, products: Product[]) {
+  // Initialize inside the function to prevent global scope reference errors in browser
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-3-flash-preview';
   
   const productContext = products.map(p => `- ${p.name}: ${p.description} ($${p.price})`).join('\n');

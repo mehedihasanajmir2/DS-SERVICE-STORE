@@ -50,9 +50,7 @@ const App: React.FC = () => {
         .select('*')
         .order('name', { ascending: true });
       
-      if (prodError) {
-        console.error("Product Fetch Error:", prodError);
-      } else if (dbProducts && dbProducts.length > 0) {
+      if (!prodError && dbProducts && dbProducts.length > 0) {
         setProducts(dbProducts);
       }
 
@@ -61,9 +59,7 @@ const App: React.FC = () => {
         .select(`*`)
         .order('created_at', { ascending: false });
 
-      if (orderError) {
-        console.error("Order Fetch Error:", orderError);
-      } else if (dbOrders) {
+      if (!orderError && dbOrders) {
         const mappedOrders = dbOrders.map((o: any) => ({
           id: o.id,
           userId: o.user_id,
@@ -73,7 +69,7 @@ const App: React.FC = () => {
           createdAt: o.created_at,
           fullName: o.full_name,
           whatsappNumber: o.whatsapp_number,
-          delivery_email: o.delivery_email,
+          deliveryEmail: o.delivery_email,
           paymentMethod: o.payment_method,
           transactionId: o.transaction_id,
           screenshotUrl: o.screenshot_url
@@ -87,21 +83,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const initialize = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          isAdmin: false
-        });
-      }
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'PASSWORD_RECOVERY') {
-          setAuthMode('update');
-          setIsAuthModalOpen(true);
-        }
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser({
             id: session.user.id,
@@ -109,16 +92,35 @@ const App: React.FC = () => {
             email: session.user.email || '',
             isAdmin: false
           });
-        } else {
-          setUser(null);
         }
-      });
-
-      await fetchData();
-      setLoading(false);
-      return () => subscription.unsubscribe();
+        await fetchData();
+      } catch (e) {
+        console.error("Initialization error", e);
+      } finally {
+        setLoading(false);
+      }
     };
+
     initialize();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthMode('update');
+        setIsAuthModalOpen(true);
+      }
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          isAdmin: false
+        });
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleAiConsult = async () => {
@@ -161,6 +163,7 @@ const App: React.FC = () => {
     setSelectedProduct(null);
     setSelectedCategory('All');
     setSearchQuery('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAdminAccessTrigger = () => {
@@ -220,7 +223,7 @@ const App: React.FC = () => {
         alert("✅ Order Placed Successfully! Your order is being verified.");
         setCart([]);
         resetToShop();
-        fetchData(); // Refresh orders for admin if needed
+        fetchData();
       }
     } catch (err: any) {
       console.error("Order error:", err);
@@ -396,7 +399,7 @@ const App: React.FC = () => {
               </button>
 
               {aiResponse && (
-                <div className="mt-8 p-6 bg-slate-900 text-white rounded-[2rem] border border-white/10 animate-in fade-in slide-in-from-top-4">
+                <div className="mt-8 p-6 bg-slate-900 text-white rounded-[2rem] border border-white/10 animate-in fade-in slide-in-from-top-4 max-h-64 overflow-y-auto">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 bg-cyan-400 rounded-full flex items-center justify-center text-slate-900">
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.5 9H22L16 14L18.5 21L12 17L5.5 21L8 14L2 9H9.5L12 2Z"/></svg>
