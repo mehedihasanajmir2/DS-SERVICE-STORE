@@ -26,38 +26,13 @@ export interface Order {
   userId: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'shipped' | 'delivered';
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
   createdAt: string;
+  fullName: string;
+  whatsappNumber: string;
+  deliveryEmail: string;
+  paymentMethod: string;
+  transactionId: string;
 }
 
-export type View = 'shop' | 'product-detail' | 'checkout' | 'cart';
-
-// Database Schema Documentation (Conceptual for MongoDB/PostgreSQL)
-/**
- * -- PostgreSQL Schema --
- * CREATE TABLE users (
- *   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
- *   name TEXT NOT NULL,
- *   email TEXT UNIQUE NOT NULL,
- *   password_hash TEXT NOT NULL,
- *   is_admin BOOLEAN DEFAULT FALSE
- * );
- * 
- * CREATE TABLE products (
- *   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
- *   name TEXT NOT NULL,
- *   description TEXT,
- *   price DECIMAL(10,2) NOT NULL,
- *   category TEXT,
- *   image_url TEXT,
- *   stock INTEGER DEFAULT 0
- * );
- * 
- * CREATE TABLE orders (
- *   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
- *   user_id UUID REFERENCES users(id),
- *   total_amount DECIMAL(10,2),
- *   status TEXT DEFAULT 'pending',
- *   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
- * );
- */
+export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin';

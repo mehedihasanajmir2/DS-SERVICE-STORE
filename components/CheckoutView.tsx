@@ -1,21 +1,26 @@
 
-import React, { useState, useRef } from 'react';
-import { CartItem } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { CartItem, Order } from '../types';
 
 interface CheckoutViewProps {
   items: CartItem[];
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (orderData: Omit<Order, 'id' | 'userId' | 'createdAt'>) => void;
 }
 
 type CheckoutStep = 'details' | 'proof';
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuccess }) => {
-  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'ssl'>('crypto');
+  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'ssl' | null>(null);
   const [step, setStep] = useState<CheckoutStep>('details');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
+  // Account Delivery Information State
+  const [fullName, setFullName] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [deliveryEmail, setDeliveryEmail] = useState('');
+
   // Proof fields
   const [transactionId, setTransactionId] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -23,33 +28,54 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
 
   const binancePayId = "573432978";
   const bdNumber = "01946406095";
-  const USD_TO_BDT_RATE = 125; // Standard conversion rate for digital services
+  const USD_TO_BDT_RATE = 125; 
 
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const isDiscountEligible = totalQuantity >= 100;
   const discount = isDiscountEligible ? subtotal * 0.05 : 0;
-  const total = subtotal - discount;
+  const totalAmount = subtotal - discount;
+
+  // Validation Logic
+  const isDetailsValid = useMemo(() => {
+    return (
+      paymentMethod !== null &&
+      fullName.trim().length > 0 &&
+      whatsappNumber.trim().length > 0 &&
+      deliveryEmail.trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+    );
+  }, [paymentMethod, fullName, whatsappNumber, deliveryEmail]);
+
+  const isProofValid = useMemo(() => {
+    return transactionId.trim().length > 0 && screenshot !== null;
+  }, [transactionId, screenshot]);
 
   const handleProceedToProof = () => {
+    if (!isDetailsValid) return;
     setStep('proof');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleFinalSubmit = () => {
-    if (!transactionId) {
-      alert(`Please enter your ${paymentMethod === 'crypto' ? 'Binance TxID' : 'Transaction ID'}.`);
-      return;
-    }
-    if (!screenshot) {
-      alert('Please upload a screenshot of your payment for verification.');
+    if (!isProofValid) {
+      alert(`Please enter your ${paymentMethod === 'crypto' ? 'Binance TxID' : 'Transaction ID'} and upload a screenshot.`);
       return;
     }
     setIsProcessing(true);
-    // Simulate verification delay
+    
+    // Simulate API call
     setTimeout(() => {
       setIsProcessing(false);
-      onSuccess();
+      onSuccess({
+        items,
+        total: totalAmount,
+        status: 'pending',
+        fullName,
+        whatsappNumber,
+        deliveryEmail,
+        paymentMethod: paymentMethod === 'crypto' ? 'Binance' : 'Mobile Banking',
+        transactionId
+      });
     }, 2500);
   };
 
@@ -91,7 +117,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Left Section */}
         <div className="lg:col-span-7 space-y-8">
           {step === 'details' ? (
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-10 shadow-sm">
@@ -101,7 +126,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
               </h2>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* GLOBAL CRYPTO OPTION */}
                 <div className="space-y-4">
                   <button 
                     onClick={() => setPaymentMethod('crypto')}
@@ -121,7 +145,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                     </div>
                   </button>
 
-                  {/* Binance Pay Details Box */}
                   {paymentMethod === 'crypto' && (
                     <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-6 text-white border border-white/10 shadow-2xl">
                       <div className="flex items-center justify-between mb-4">
@@ -145,18 +168,13 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                           onClick={() => copyToClipboard(binancePayId, 'binance')}
                           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'binance' ? 'bg-green-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
                         >
-                          {copiedId === 'binance' ? (
-                            <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>Copied!</>
-                          ) : (
-                            <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>Copy ID</>
-                          )}
+                          {copiedId === 'binance' ? 'Copied!' : 'Copy ID'}
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* BANGLADESHI USER OPTION */}
                 <div className="space-y-4">
                   <button 
                     onClick={() => setPaymentMethod('ssl')}
@@ -176,56 +194,35 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                     </div>
                   </button>
 
-                  {/* BD Payment Details Box */}
                   {paymentMethod === 'ssl' && (
                     <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-8 text-white border border-white/10 shadow-2xl space-y-8">
-                      {/* Bkash Section */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src="https://static.vecteezy.com/system/resources/previews/068/842/080/non_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png" 
-                            className="h-8 w-auto" 
-                            alt="Bkash" 
-                          />
+                          <img src="https://static.vecteezy.com/system/resources/previews/068/842/080/non_2x/bkash-logo-horizontal-mobile-banking-app-icon-emblem-transparent-background-free-png.png" className="h-8 w-auto" alt="Bkash" />
                           <h4 className="text-xs font-black uppercase tracking-widest text-pink-500">Bkash</h4>
                         </div>
                         <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bkash Number</span>
                             <span className="text-xl font-black tracking-widest text-pink-400 font-mono">{bdNumber}</span>
-                            <span className="text-[10px] font-black text-white/40 uppercase mt-1 tracking-tighter">Only Send Money</span>
                           </div>
-                          <button 
-                            onClick={() => copyToClipboard(bdNumber, 'bkash')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                          >
+                          <button onClick={() => copyToClipboard(bdNumber, 'bkash')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                             {copiedId === 'bkash' ? 'Copied!' : 'Copy'}
                           </button>
                         </div>
                       </div>
-
                       <div className="h-px bg-white/10 w-full"></div>
-
-                      {/* Nagad Section */}
                       <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                          <img 
-                            src="https://www.logo.wine/a/logo/Nagad/Nagad-Vertical-Logo.wine.svg" 
-                            className="h-10 w-auto brightness-150" 
-                            alt="Nagad" 
-                          />
+                          <img src="https://www.logo.wine/a/logo/Nagad/Nagad-Vertical-Logo.wine.svg" className="h-10 w-auto brightness-150" alt="Nagad" />
                           <h4 className="text-xs font-black uppercase tracking-widest text-orange-500">Nagad</h4>
                         </div>
                         <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Nagad Number</span>
                             <span className="text-xl font-black tracking-widest text-orange-400 font-mono">{bdNumber}</span>
-                            <span className="text-[10px] font-black text-white/40 uppercase mt-1 tracking-tighter">Only Send Money</span>
                           </div>
-                          <button 
-                            onClick={() => copyToClipboard(bdNumber, 'nagad')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'nagad' ? 'bg-orange-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                          >
+                          <button onClick={() => copyToClipboard(bdNumber, 'nagad')} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'nagad' ? 'bg-orange-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}>
                             {copiedId === 'nagad' ? 'Copied!' : 'Copy'}
                           </button>
                         </div>
@@ -241,14 +238,31 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                       Account Delivery Information
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input type="text" placeholder="Full Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" />
-                      <input type="text" placeholder="Whatsapp Number" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" />
-                      <input type="email" placeholder="Delivery Email Address" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold md:col-span-2" />
+                      <input 
+                        type="text" 
+                        placeholder="Full Name" 
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Whatsapp Number" 
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold transition-all"
+                        value={whatsappNumber}
+                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                      />
+                      <input 
+                        type="email" 
+                        placeholder="Delivery Email Address" 
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold md:col-span-2 transition-all"
+                        value={deliveryEmail}
+                        onChange={(e) => setDeliveryEmail(e.target.value)}
+                      />
                   </div>
               </div>
             </div>
           ) : (
-            /* STEP 2: PROOF SUBMISSION (SCREENSHOT UPLOAD) */
             <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-10 shadow-sm animate-in slide-in-from-right duration-500">
               <div className="text-center mb-8">
                 <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-100">
@@ -296,27 +310,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                           </svg>
                         </div>
                         <p className="font-black text-slate-900">Choose Screenshot</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">PNG, JPG up to 10MB</p>
                       </>
                     )}
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      accept="image/*"
-                      onChange={(e) => setScreenshot(e.target.files?.[0] || null)}
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-                  <div className="flex gap-3">
-                    <svg className="w-5 h-5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs font-bold text-amber-800 leading-relaxed">
-                      Verification usually takes <span className="underline">5-10 minutes</span>. Your account details will be sent to your email immediately after confirmation.
-                    </p>
+                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => setScreenshot(e.target.files?.[0] || null)} />
                   </div>
                 </div>
               </div>
@@ -324,7 +320,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
           )}
         </div>
 
-        {/* Right: Order Summary */}
         <div className="lg:col-span-5">
           <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl sticky top-24">
             <h2 className="text-2xl font-black uppercase tracking-tighter mb-8 border-b border-white/10 pb-4">Order Summary</h2>
@@ -360,16 +355,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
               <div className="flex justify-between items-center pt-4 border-t border-white/10">
                 <span className="text-xl font-black">Total Amount</span>
                 <span className="text-3xl font-black text-cyan-400">
-                  {formatPrice(total)}
+                  {formatPrice(totalAmount)}
                 </span>
               </div>
             </div>
 
             <button 
               onClick={step === 'details' ? handleProceedToProof : handleFinalSubmit}
-              disabled={isProcessing}
+              disabled={isProcessing || (step === 'details' && !isDetailsValid) || (step === 'proof' && !isProofValid)}
               className={`w-full mt-10 py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95
-                ${isProcessing ? 'bg-slate-700 text-slate-400 cursor-wait' : 'bg-white text-slate-900 hover:bg-cyan-400 hover:text-slate-900'}
+                ${isProcessing || (step === 'details' && !isDetailsValid) || (step === 'proof' && !isProofValid)
+                  ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
+                  : 'bg-white text-slate-900 hover:bg-cyan-400 hover:text-slate-900'}
               `}
             >
               {isProcessing ? (
@@ -389,6 +386,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                 </>
               )}
             </button>
+            
+            {step === 'details' && !isDetailsValid && (
+              <p className="mt-4 text-[10px] text-center text-amber-500 font-bold uppercase tracking-widest animate-pulse">
+                Complete all fields to proceed
+              </p>
+            )}
             
             <p className="mt-6 text-[10px] text-center text-slate-500 font-black uppercase tracking-widest">
               Encrypted SSL Transaction • {paymentMethod === 'crypto' ? 'Powered by Binance Pay' : 'Powered by Bkash & Nagad'}

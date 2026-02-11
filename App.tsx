@@ -7,13 +7,14 @@ import { ProductDetail } from './components/ProductDetail';
 import { ProductTicker } from './components/ProductTicker';
 import { CheckoutView } from './components/CheckoutView';
 import { AuthModal } from './components/AuthModal';
-import { Product, CartItem, User, View } from './types';
+import { AdminPanel } from './components/AdminPanel';
+import { Product, CartItem, User, View, Order } from './types';
 import { INITIAL_PRODUCTS, CATEGORIES } from './constants';
 import { supabase } from './supabaseClient';
 
 const App: React.FC = () => {
-  // State
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentView, setCurrentView] = useState<View>('shop');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -25,12 +26,19 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update'>('signin');
   const [loading, setLoading] = useState(true);
   
+  // Admin Specific States
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [showAdminPassModal, setShowAdminPassModal] = useState(false);
+  const [adminInputPass, setAdminInputPass] = useState('');
+  const [adminError, setAdminError] = useState(false);
+  
   const shopSectionRef = useRef<HTMLDivElement>(null);
+  const clickCount = useRef(0);
+  const lastClickTime = useRef(0);
+  const ADMIN_PASSWORD = "Ajmir@#123";
 
-  // Initialize Auth & Fetch Products
   useEffect(() => {
     const initialize = async () => {
-      // 1. Check current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser({
@@ -41,13 +49,11 @@ const App: React.FC = () => {
         });
       }
 
-      // 2. Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY') {
           setAuthMode('update');
           setIsAuthModalOpen(true);
         }
-
         if (session?.user) {
           setUser({
             id: session.user.id,
@@ -60,29 +66,27 @@ const App: React.FC = () => {
         }
       });
 
-      // 3. Fetch Products from Supabase
       try {
         const { data: dbProducts, error } = await supabase
           .from('products')
           .select('*')
           .order('name', { ascending: true });
-
         if (!error && dbProducts && dbProducts.length > 0) {
           setProducts(dbProducts);
         }
+        
+        // Fetch Orders (Optional if you have a Supabase table)
+        // For now we'll handle orders in memory if table doesn't exist
       } catch (err) {
-        console.error("Failed to fetch products from Supabase, using defaults.");
+        console.error("Failed to fetch data");
       } finally {
         setLoading(false);
       }
-
       return () => subscription.unsubscribe();
     };
-
     initialize();
   }, []);
 
-  // Computed
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
@@ -94,56 +98,14 @@ const App: React.FC = () => {
 
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
 
-  // Handlers
   const handleAddToCart = (product: Product, quantity: number = 1) => {
-    if (!user) {
-      setAuthMode('signin');
-      setIsAuthModalOpen(true);
-      return;
-    }
-
+    if (!user) { setAuthMode('signin'); setIsAuthModalOpen(true); return; }
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
-      }
+      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item);
       return [...prev, { ...product, quantity }];
     });
     setIsCartOpen(true);
-  };
-
-  const handleUpdateQuantity = (id: string, q: number) => {
-    const validQ = Math.max(1, q);
-    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: validQ } : item));
-  };
-
-  const handleRemoveFromCart = (id: string) => {
-    setCart(prev => prev.filter(item => item.id !== id));
-  };
-
-  const handleViewDetails = (product: Product) => {
-    setSelectedProduct(product);
-    setCurrentView('product-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleProceedToCheckout = () => {
-    if (!user) {
-      setIsCartOpen(false);
-      setAuthMode('signin');
-      setIsAuthModalOpen(true);
-      return;
-    }
-    setIsCartOpen(false);
-    setCurrentView('checkout');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setCart([]);
-    resetToShop();
   };
 
   const resetToShop = () => {
@@ -153,280 +115,206 @@ const App: React.FC = () => {
     setSearchQuery('');
   };
 
-  const scrollToShop = () => {
-    resetToShop();
-    setTimeout(() => {
-        shopSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+  // Secret Click Logic (5 clicks in 3 seconds)
+  const handleAdminAccessTrigger = () => {
+    const now = Date.now();
+    if (now - lastClickTime.current > 3000) {
+      clickCount.current = 1;
+    } else {
+      clickCount.current += 1;
+    }
+    lastClickTime.current = now;
+
+    if (clickCount.current >= 5) {
+      clickCount.current = 0;
+      setShowAdminPassModal(true);
+      setAdminError(false);
+      setAdminInputPass('');
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="relative w-20 h-20">
-            <div className="absolute inset-0 border-4 border-blue-600/20 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-          </div>
-          <p className="text-slate-900 font-black uppercase tracking-[0.2em] text-sm animate-pulse">Initializing DS System</p>
+  const verifyAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminInputPass === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true);
+      setCurrentView('admin');
+      setShowAdminPassModal(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setAdminError(true);
+      setTimeout(() => setAdminError(false), 2000);
+    }
+  };
+
+  const handlePlaceOrder = (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
+    const newOrder: Order = {
+      ...orderInfo,
+      id: Math.random().toString(36).substr(2, 9),
+      userId: user?.id || 'guest',
+      createdAt: new Date().toISOString(),
+    };
+    setOrders(prev => [newOrder, ...prev]);
+    alert("✅ Order Placed Successfully! Please wait for admin verification.");
+    setCart([]);
+    resetToShop();
+  };
+
+  const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    alert(`✅ Order marked as ${status.toUpperCase()}`);
+  };
+
+  const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
+    const { data, error } = await supabase.from('products').insert([newProduct]).select();
+    if (!error && data) {
+      setProducts(prev => [...data, ...prev]);
+      alert("✅ Product Added to Catalog!");
+    } else {
+      alert("Error adding product: " + error?.message);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (!error) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+      alert("🗑️ Product Removed Successfully.");
+    } else {
+      alert("Error deleting product: " + error.message);
+    }
+  };
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="flex flex-col items-center gap-6">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 border-4 border-blue-600/10 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
         </div>
+        <p className="text-slate-900 font-black uppercase tracking-[0.2em] text-xs">Accessing Secure Vault</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
       <Navbar 
         currentView={currentView} 
-        setView={scrollToShop} 
+        setView={(v) => { if(v === 'shop') resetToShop(); else setCurrentView(v); }} 
         cartCount={cartCount}
         user={user}
-        onLogout={handleLogout}
+        onLogout={async () => { await supabase.auth.signOut(); setUser(null); setCart([]); resetToShop(); }}
         onAuthClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
       />
 
-      {/* LIVE PRODUCT TICKER */}
-      {currentView === 'shop' && (
-        <ProductTicker 
-          products={products} 
-          onProductClick={handleViewDetails} 
-        />
-      )}
+      {currentView === 'shop' && <ProductTicker products={products} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         {currentView === 'shop' ? (
-          <div className="space-y-10 md:space-y-16">
+          <div className="space-y-12">
             {/* HERO SECTION */}
-            <div 
-              className="relative rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden min-h-[400px] md:min-h-[500px] flex items-center shadow-2xl border border-white/10"
-              style={{
-                backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-slate-900/60 to-transparent"></div>
-              
-              <div className="relative z-10 max-w-4xl px-6 sm:px-12 md:px-16 py-12">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 leading-tight text-white tracking-tighter">
-                  DS <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-emerald-400 uppercase">Service Store</span>
-                </h1>
-                
-                <div className="inline-block px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 mb-8 shadow-2xl max-w-full">
-                    <p className="text-[10px] md:text-sm font-black text-white uppercase tracking-widest mb-1.5">
-                        Buy this product in my website
-                    </p>
-                    <p className="text-[9px] md:text-xs font-bold text-blue-200 uppercase tracking-widest opacity-90 leading-relaxed">
-                        All Type Apple Id, All Type Icloud, Verified New & Old Gmail Id & Visa Cards
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-4 md:gap-6 mb-10 flex-wrap">
-                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border border-white/10 shadow-lg">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="h-4 md:h-5 w-auto invert" alt="Apple ID" />
-                      <span className="text-[9px] md:text-[10px] font-black text-white uppercase tracking-widest">Apple Verified</span>
-                   </div>
-                   <div className="flex items-center gap-3 bg-white/5 backdrop-blur-xl px-3 py-2 md:px-4 md:py-2.5 rounded-2xl border border-white/10 shadow-lg">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="h-3 md:h-4 w-auto brightness-200" />
-                   </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4">
-                   <button 
-                    onClick={scrollToShop}
-                    className="group relative px-8 py-4 bg-white text-slate-950 rounded-2xl font-black text-base transition-all shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center gap-3 overflow-hidden w-full sm:w-auto"
-                   >
-                     <span className="relative z-10">Shop Now</span>
-                     <svg className="w-5 h-5 relative z-10 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                     </svg>
-                   </button>
-                </div>
+            <div className="relative rounded-[2.5rem] overflow-hidden min-h-[450px] flex items-center shadow-2xl border border-white/10"
+              style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              <div className="absolute inset-0 bg-slate-900/80"></div>
+              <div className="relative z-10 px-8 md:px-16">
+                <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">DS <span className="text-cyan-400">SERVICE STORE</span></h1>
+                <p className="text-sm font-black text-blue-200 uppercase tracking-[0.3em] mb-8">Verified Premium Digital Ecosystem</p>
+                <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all">Shop Services</button>
               </div>
             </div>
 
-            {/* Verification Icons Bar */}
-            <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-200/60 p-6 md:p-10 shadow-xl shadow-slate-200/50 overflow-hidden">
-                <div className="flex flex-col lg:flex-row items-center gap-8 md:gap-16 lg:gap-24 justify-center">
-                    <div className="text-center lg:text-left">
-                        <h4 className="text-xl font-black text-slate-900 mb-2">Verified Ecosystem</h4>
-                        <p className="text-sm text-slate-500 font-medium max-w-xs md:max-w-none">Seamless integration with global standard accounts and payments.</p>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12">
-                        <div className="group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" alt="Apple Account" className="h-6 md:h-7 w-auto opacity-70 group-hover:opacity-100" />
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Apple ID</span>
-                        </div>
-                        <div className="group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt="Gmail" className="h-5 md:h-6 w-auto opacity-70 group-hover:opacity-100" />
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Verified Gmail</span>
-                        </div>
-                        <div className="h-10 w-px bg-slate-200 hidden lg:block mx-4"></div>
-                        <div className="group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" alt="Visa" className="w-8 md:w-10 opacity-70 group-hover:opacity-100" />
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Visa</span>
-                        </div>
-                        <div className="group flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-white group-hover:shadow-lg transition-all">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-5 md:h-6 w-auto opacity-70 group-hover:opacity-100" />
-                            </div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Master</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Filter and Search */}
-            <div ref={shopSectionRef} className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-center justify-between bg-white p-4 md:p-6 rounded-[1.25rem] md:rounded-[1.5rem] border border-slate-200 shadow-sm scroll-mt-24">
-              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-3 lg:pb-0 no-scrollbar">
+            <div ref={shopSectionRef} className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-white p-4 rounded-3xl border border-slate-200 shadow-sm scroll-mt-24">
+              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
                 {CATEGORIES.map(cat => (
-                  <button 
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-4 py-2.5 rounded-xl text-[11px] md:text-xs font-black transition-all whitespace-nowrap uppercase tracking-wider
-                      ${selectedCategory === cat 
-                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 border border-slate-100'}`}
-                  >
-                    {cat}
-                  </button>
+                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>{cat}</button>
                 ))}
               </div>
-              
-              <div className="relative w-full lg:w-[360px]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input 
-                  type="text" 
-                  placeholder="Search our verified services..."
-                  className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-600 outline-none transition-all placeholder:text-slate-400 text-sm font-bold"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <input type="text" placeholder="Search..." className="w-full lg:w-72 px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
             </div>
 
-            {/* Service Grid Section Heading */}
-            <div className="flex items-center gap-4 px-2">
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tighter shrink-0">Our Services</h2>
-              <div className="h-px w-full bg-slate-200"></div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-10 pb-20">
-              {filteredProducts.length > 0 ? (
-                filteredProducts.map(product => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={(p) => handleAddToCart(p, 1)}
-                    onViewDetails={handleViewDetails}
-                  />
-                ))
-              ) : (
-                <div className="col-span-full py-20 md:py-32 text-center bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-300">
-                   <h3 className="text-xl md:text-2xl font-black text-slate-900">No services found</h3>
-                   <p className="text-slate-500 mt-2 md:mt-3 font-medium px-6">Try adjusting your filters or search terms.</p>
-                </div>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pb-20">
+              {filteredProducts.map(product => (
+                <ProductCard key={product.id} product={product} onAddToCart={(p) => handleAddToCart(p, 1)} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
+              ))}
             </div>
           </div>
         ) : currentView === 'product-detail' && selectedProduct ? (
-          <ProductDetail 
-            product={selectedProduct} 
-            onAddToCart={handleAddToCart}
-            onBack={resetToShop}
-          />
+          <ProductDetail product={selectedProduct} onAddToCart={handleAddToCart} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
-          <CheckoutView 
-            items={cart} 
+          <CheckoutView items={cart} onBack={resetToShop} onSuccess={handlePlaceOrder} />
+        ) : currentView === 'admin' && isAdminAuthenticated ? (
+          <AdminPanel 
+            products={products} 
+            orders={orders}
+            onAddProduct={handleAddProduct} 
+            onDeleteProduct={handleDeleteProduct} 
+            onUpdateOrderStatus={handleUpdateOrderStatus}
             onBack={resetToShop} 
-            onSuccess={() => {
-                alert('Payment Successful! Thank you for your purchase.');
-                setCart([]);
-                resetToShop();
-            }}
           />
-        ) : null}
+        ) : (
+          <div className="text-center py-20">
+            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-widest">Unauthorized Access</h2>
+            <button onClick={resetToShop} className="mt-6 px-8 py-3 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest">Back to Home</button>
+          </div>
+        )}
       </main>
 
-      <footer className="bg-[#0F172A] text-slate-400 pt-16 md:pt-24 pb-12">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-20 mb-16 md:mb-20">
-            <div className="space-y-6 md:space-y-8">
-                <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center w-10 h-10">
-                        <div className="absolute inset-0 border-2 border-cyan-400/40 rounded-full border-t-transparent animate-spin"></div>
-                        <div className="flex items-baseline relative z-10 font-black text-sm">
-                            <span className="text-blue-500">D</span>
-                            <span className="text-green-400 -ml-0.5">S</span>
-                        </div>
-                    </div>
-                    <h3 className="text-white text-xl font-black tracking-tight">DS <span className="font-normal text-slate-400">SERVICE STORE</span></h3>
-                </div>
-                <p className="text-sm md:text-base leading-relaxed text-slate-400/80">
-                    Scientific precision for digital growth. Scale your vision with the DS platform. Reliable digital solutions since 2005.
-                </p>
+      <footer className="bg-[#0F172A] text-white/50 py-20 mt-20 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-10">
+          <div className="flex flex-col items-center md:items-start">
+            <h3 className="text-white text-2xl font-black uppercase tracking-tight mb-4">DS <span className="text-slate-500 font-light">STORE</span></h3>
+            
+            <div 
+              className="group cursor-pointer p-4 -m-4 select-none active:bg-white/5 transition-colors rounded-lg" 
+              onClick={handleAdminAccessTrigger}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-500 group-hover:text-slate-300 transition-colors">
+                © 2005-2024 DS SERVICE STORE. ALL RIGHTS RESERVED.
+              </p>
+              <div className="h-px w-0 group-hover:w-full bg-slate-800 transition-all duration-700 mt-2"></div>
             </div>
-            <div>
-                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Expertise</h4>
-                <ul className="space-y-4 text-xs md:text-sm font-bold">
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Software Architecture</li>
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Growth Engineering</li>
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Search Optimization</li>
-                </ul>
-            </div>
-            <div>
-                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Support</h4>
-                <ul className="space-y-4 text-xs md:text-sm font-bold">
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Documentation</li>
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">Technical Audits</li>
-                    <li className="hover:text-cyan-400 cursor-pointer transition-colors">API Reference</li>
-                </ul>
-            </div>
-            <div>
-                <h4 className="text-white font-black text-xs uppercase tracking-[0.2em] mb-8">Contact</h4>
-                <div className="space-y-4">
-                    <p className="text-xs md:text-sm font-bold text-slate-300">Whatsapp : +8801946406095</p>
-                    <p className="text-xs md:text-sm font-bold text-slate-300 break-all underline underline-offset-4 decoration-blue-500/50">mehedihasanajmir1000@gmail.com</p>
-                </div>
-            </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-6 border-t border-slate-800/60 pt-12 flex flex-col md:flex-row justify-between items-center gap-10 text-center md:text-left">
-            <div className="space-y-2">
-                <p className="text-[10px] md:text-xs font-black text-slate-400 tracking-widest uppercase">Mehedi Hasan, the owner of this website</p>
-                <p className="text-[9px] md:text-[10px] font-bold text-slate-600 tracking-widest">© 2005 DS SERVICE STORE. ALL RIGHTS RESERVED.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-6 md:gap-8 items-center opacity-30">
-                <img src="https://logowik.com/content/uploads/images/binance-black-icon5996.logowik.com.webp" className="h-5 w-auto grayscale contrast-125" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" className="h-2.5 w-auto grayscale" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" className="h-4 w-auto grayscale" />
-                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b0/Apple_Pay_logo.svg" className="h-4 w-auto grayscale" />
-            </div>
+          </div>
+          
+          <div className="flex gap-10 opacity-20 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+             <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" className="h-6 invert" alt="Apple" />
+             <img src="https://upload.wikimedia.org/wikipedia/commons/d/d6/Visa_2021.svg" className="h-5 brightness-200" alt="Visa" />
+             <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" className="h-5" alt="PayPal" />
+          </div>
         </div>
       </footer>
 
-      <CartDrawer 
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        items={cart}
-        onRemove={handleRemoveFromCart}
-        onUpdateQuantity={handleUpdateQuantity}
-        onCheckout={handleProceedToCheckout}
-      />
+      {showAdminPassModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-xl">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Secure Terminal</h2>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Authorized Access Only</p>
+            </div>
+            
+            <form onSubmit={verifyAdmin} className="space-y-4">
+              <input 
+                autoFocus
+                type="password"
+                placeholder="Enter Access Key..."
+                className={`w-full px-5 py-4 bg-slate-50 border-2 rounded-2xl outline-none font-black text-center tracking-widest transition-all ${adminError ? 'border-red-500 bg-red-50 animate-shake' : 'border-slate-100 focus:border-blue-600'}`}
+                value={adminInputPass}
+                onChange={e => setAdminInputPass(e.target.value)}
+              />
+              {adminError && <p className="text-red-500 text-[10px] font-black uppercase text-center tracking-widest">Access Denied</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setShowAdminPassModal(false)} className="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+                <button type="submit" className="py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg">Unlock</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-      <AuthModal 
-        isOpen={isAuthModalOpen}
-        initialMode={authMode}
-        onClose={() => setIsAuthModalOpen(false)}
-        onLogin={(u) => setUser(u)}
-      />
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, q) => setCart(cart.map(i => i.id === id ? {...i, quantity: q} : i))} onCheckout={() => { setIsCartOpen(false); setCurrentView('checkout'); }} />
+      <AuthModal isOpen={isAuthModalOpen} initialMode={authMode} onClose={() => setIsAuthModalOpen(false)} onLogin={(u) => setUser(u)} />
     </div>
   );
 };
