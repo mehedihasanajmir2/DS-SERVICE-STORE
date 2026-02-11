@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { Product, CartItem, User, View, Order } from './types';
 import { INITIAL_PRODUCTS, CATEGORIES } from './constants';
 import { supabase } from './supabaseClient';
+import { getProductRecommendations } from './services/geminiService';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -26,6 +27,12 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update'>('signin');
   const [loading, setLoading] = useState(true);
   
+  // AI State
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminPassModal, setShowAdminPassModal] = useState(false);
   const [adminInputPass, setAdminInputPass] = useState('');
@@ -66,7 +73,7 @@ const App: React.FC = () => {
           createdAt: o.created_at,
           fullName: o.full_name,
           whatsappNumber: o.whatsapp_number,
-          deliveryEmail: o.delivery_email,
+          delivery_email: o.delivery_email,
           paymentMethod: o.payment_method,
           transactionId: o.transaction_id,
           screenshotUrl: o.screenshot_url
@@ -113,6 +120,20 @@ const App: React.FC = () => {
     };
     initialize();
   }, []);
+
+  const handleAiConsult = async () => {
+    if (!aiQuery.trim()) return;
+    setIsAiLoading(true);
+    setAiResponse(null);
+    try {
+      const response = await getProductRecommendations(aiQuery, products);
+      setAiResponse(response);
+    } catch (err) {
+      setAiResponse("Something went wrong. Please try again.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -173,7 +194,6 @@ const App: React.FC = () => {
   };
 
   const handlePlaceOrder = async (orderInfo: Omit<Order, 'id' | 'userId' | 'createdAt'>) => {
-    // ডাটাবেস কলাম অনুযায়ী ডাটা অবজেক্ট তৈরি
     const orderData: any = {
       user_id: user?.id || 'guest',
       items: orderInfo.items,
@@ -185,58 +205,22 @@ const App: React.FC = () => {
       payment_method: orderInfo.paymentMethod,
       transaction_id: orderInfo.transactionId,
       created_at: new Date().toISOString(),
+      screenshot_url: orderInfo.screenshotUrl
     };
 
-    // শুধুমাত্র কলামটি থাকলে screenshot_url অ্যাড হবে
-    if (orderInfo.screenshotUrl) {
-      orderData.screenshot_url = orderInfo.screenshotUrl;
-    }
-
     try {
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('orders')
         .insert([orderData])
         .select('*');
 
-      // যদি screenshot_url কলামটি না থাকে এবং তার কারণে এরর আসে
-      if (error && (error.message.includes("screenshot_url") || error.message.includes("column"))) {
-        console.warn("Screenshot column missing, retrying without it...");
-        // screenshot_url ছাড়াই আবার ট্রাই করা হচ্ছে
-        const { screenshot_url, ...fallbackData } = orderData;
-        const retry = await supabase
-          .from('orders')
-          .insert([fallbackData])
-          .select('*');
-        
-        data = retry.data;
-        error = retry.error;
-        
-        if (!error) {
-            alert("⚠️ Order placed, but screenshot couldn't be saved because database needs update. Please inform admin.");
-        }
-      }
-
       if (error) throw error;
 
       if (data) {
-        const newOrder: Order = {
-          id: data[0].id,
-          userId: data[0].user_id,
-          items: data[0].items,
-          total: data[0].total,
-          status: data[0].status,
-          createdAt: data[0].created_at,
-          fullName: data[0].full_name,
-          whatsappNumber: data[0].whatsapp_number,
-          deliveryEmail: data[0].delivery_email,
-          paymentMethod: data[0].payment_method,
-          transactionId: data[0].transaction_id,
-          screenshotUrl: data[0].screenshot_url
-        };
-        setOrders(prev => [newOrder, ...prev]);
         alert("✅ Order Placed Successfully! Your order is being verified.");
         setCart([]);
         resetToShop();
+        fetchData(); // Refresh orders for admin if needed
       }
     } catch (err: any) {
       console.error("Order error:", err);
@@ -321,10 +305,16 @@ const App: React.FC = () => {
             <div className="relative rounded-[2.5rem] overflow-hidden min-h-[450px] flex items-center shadow-2xl border border-white/10"
               style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
               <div className="absolute inset-0 bg-slate-900/80"></div>
-              <div className="relative z-10 px-8 md:px-16">
+              <div className="relative z-10 px-8 md:px-16 w-full lg:w-2/3">
                 <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">DS <span className="text-cyan-400">SERVICE STORE</span></h1>
                 <p className="text-sm font-black text-blue-200 uppercase tracking-[0.3em] mb-8">Verified Premium Digital Ecosystem</p>
-                <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all">Shop Services</button>
+                <div className="flex flex-wrap gap-4">
+                  <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all">Shop Services</button>
+                  <button onClick={() => setShowAiModal(true)} className="px-10 py-4 bg-slate-900/50 backdrop-blur border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center gap-3">
+                    <svg className="w-5 h-5 text-cyan-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.5 9H22L16 14L18.5 21L12 17L5.5 21L8 14L2 9H9.5L12 2Z"/></svg>
+                    Consult AI Assistant
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -374,6 +364,54 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* AI Assistant Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onClick={() => setShowAiModal(false)} />
+          <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="bg-slate-900 p-8 text-white relative">
+              <h2 className="text-2xl font-black uppercase tracking-tighter">AI Business Consultant</h2>
+              <p className="text-cyan-400 text-xs font-bold uppercase tracking-[0.2em] mt-1">Powered by Gemini AI</p>
+              <button onClick={() => setShowAiModal(false)} className="absolute top-8 right-8 text-slate-400 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <p className="text-slate-500 font-medium">Tell us about your business or needs, and our AI will suggest the best digital services for you.</p>
+              <textarea 
+                className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold resize-none"
+                placeholder="e.g. I need to verify my Apple developer account and need some business emails..."
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+              />
+              
+              <button 
+                onClick={handleAiConsult}
+                disabled={isAiLoading || !aiQuery.trim()}
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all disabled:opacity-50"
+              >
+                {isAiLoading ? "Consulting AI..." : "Get Recommendations"}
+              </button>
+
+              {aiResponse && (
+                <div className="mt-8 p-6 bg-slate-900 text-white rounded-[2rem] border border-white/10 animate-in fade-in slide-in-from-top-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-cyan-400 rounded-full flex items-center justify-center text-slate-900">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.5 9H22L16 14L18.5 21L12 17L5.5 21L8 14L2 9H9.5L12 2Z"/></svg>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Expert Recommendation</span>
+                  </div>
+                  <div className="text-sm leading-relaxed whitespace-pre-line font-medium text-slate-300">
+                    {aiResponse}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="bg-[#0F172A] text-white/50 py-20 mt-20 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-10">

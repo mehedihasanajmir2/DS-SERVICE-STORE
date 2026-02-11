@@ -5,7 +5,7 @@ export const CATEGORIES = ['All', 'New Apple Account', 'Old Apple Account', 'All
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
-    id: '5',
+    id: 'e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5', // Updated to valid UUID format
     name: 'New 1 Apple id',
     description: 'Freshly created, not verified Apple ID. Secure and ready for immediate use across all your Apple devices.',
     price: 0.20,
@@ -15,7 +15,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.9
   },
   {
-    id: '4',
+    id: 'd4d4d4d4-d4d4-d4d4-d4d4-d4d4d4d4d4d4',
     name: '1 year 1 Apple id',
     description: 'Not verified Apple ID with 1-year history. Perfect for developers and legacy app compatibility.',
     price: 0.50,
@@ -25,7 +25,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.7
   },
   {
-    id: '3',
+    id: 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3',
     name: 'New 1 pis iCloud',
     description: 'Premium not verified iCloud accounts for professional and personal use. High quality guaranteed.',
     price: 0.15,
@@ -35,7 +35,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.9
   },
   {
-    id: '8',
+    id: 'b8b8b8b8-b8b8-b8b8-b8b8-b8b8b8b8b8b8',
     name: 'Old 1 pis iCloud',
     description: 'Premium not verified iCloud accounts for professional and personal use. High quality guaranteed.',
     price: 0.70,
@@ -45,7 +45,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.9
   },
   {
-    id: '2',
+    id: 'a2a2a2a2-a2a2-a2a2-a2a2-a2a2a2a2a2a2',
     name: '1 Pis visa card for apple id',
     description: 'Premium virtual Visa cards specifically optimized for Apple ID verification and global digital payments.',
     price: 0.30,
@@ -55,7 +55,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.8
   },
   {
-    id: '6',
+    id: 'f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6',
     name: 'New Fresh Gmail ID',
     description: 'All Gmail create only android and PC create Gmail',
     price: 0.10,
@@ -65,7 +65,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     rating: 4.8
   },
   {
-    id: '7',
+    id: 'a7a7a7a7-a7a7-a7a7-a7a7-a7a7a7a7a7a7',
     name: 'Old Fresh Gmail ID',
     description: 'All Gmail create only android and PC create Gmail',
     price: 0.18,
