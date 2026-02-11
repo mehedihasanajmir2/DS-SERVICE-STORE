@@ -74,9 +74,6 @@ const App: React.FC = () => {
         if (!error && dbProducts && dbProducts.length > 0) {
           setProducts(dbProducts);
         }
-        
-        // Fetch Orders (Optional if you have a Supabase table)
-        // For now we'll handle orders in memory if table doesn't exist
       } catch (err) {
         console.error("Failed to fetch data");
       } finally {
@@ -115,7 +112,6 @@ const App: React.FC = () => {
     setSearchQuery('');
   };
 
-  // Secret Click Logic (5 clicks in 3 seconds)
   const handleAdminAccessTrigger = () => {
     const now = Date.now();
     if (now - lastClickTime.current > 3000) {
@@ -171,6 +167,16 @@ const App: React.FC = () => {
       alert("✅ Product Added to Catalog!");
     } else {
       alert("Error adding product: " + error?.message);
+    }
+  };
+
+  const handleUpdateProduct = async (id: string, updatedFields: Partial<Product>) => {
+    const { data, error } = await supabase.from('products').update(updatedFields).eq('id', id).select();
+    if (!error && data) {
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data[0] } : p));
+      alert("✅ Product Updated Successfully!");
+    } else {
+      alert("Error updating product: " + error?.message);
     }
   };
 
@@ -247,6 +253,7 @@ const App: React.FC = () => {
             products={products} 
             orders={orders}
             onAddProduct={handleAddProduct} 
+            onUpdateProduct={handleUpdateProduct}
             onDeleteProduct={handleDeleteProduct} 
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onBack={resetToShop} 
