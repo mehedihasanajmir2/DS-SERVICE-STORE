@@ -30,6 +30,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
 
   const binancePayId = "573432978";
   const bdNumber = "01946406095";
+  const adminWhatsApp = "+8801946406095";
   const USD_TO_BDT_RATE = 125; 
 
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -223,9 +224,23 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                       Delivery Information
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input type="text" placeholder="Full Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                      <input type="tel" placeholder="WhatsApp Number (11 Digits)" maxLength={11} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, ''))} />
-                      <input type="email" placeholder="Delivery Email" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold md:col-span-2" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} />
+                      <div className="md:col-span-2">
+                        <input type="text" placeholder="Full Name" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type="tel" 
+                          placeholder="WhatsApp Number" 
+                          maxLength={11} 
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold pr-16" 
+                          value={whatsappNumber} 
+                          onChange={(e) => setWhatsappNumber(e.target.value.replace(/[^0-9]/g, ''))} 
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-black text-slate-400 tracking-widest shadow-sm">
+                          {whatsappNumber.length}/11
+                        </div>
+                      </div>
+                      <input type="email" placeholder="Delivery Email" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 font-bold" value={deliveryEmail} onChange={(e) => setDeliveryEmail(e.target.value)} />
                   </div>
               </div>
 
@@ -240,7 +255,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                   <div className="flex-1">
                     <h4 className="text-sm font-black uppercase tracking-tight text-amber-900">Delivery Notice</h4>
                     <p className="text-xs font-bold text-amber-700 mt-1 leading-relaxed">
-                      I understand that the standard delivery time is 1-10 minutes. If my order is not delivered within 10 minutes, I agree to contact support via WhatsApp with my Transaction ID.
+                      I understand that the standard delivery time is 1-10 minutes. If my order is not delivered within 10 minutes, I agree to contact support via WhatsApp <a href={`https://wa.me/${adminWhatsApp.replace('+', '')}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline font-black">{adminWhatsApp}</a> with my Transaction ID.
                     </p>
                   </div>
                 </div>
