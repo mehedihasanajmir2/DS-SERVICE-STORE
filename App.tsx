@@ -38,6 +38,8 @@ const App: React.FC = () => {
   const clickCount = useRef(0);
   const lastClickTime = useRef(0);
   const ADMIN_PASSWORD = "Ajmir@#123";
+  const ADMIN_SESSION_KEY = "ds_admin_session_v1";
+  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   
   const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo"; 
 
@@ -84,6 +86,19 @@ const App: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       try {
+        // 1. Check for persistent Admin Session
+        const storedSession = localStorage.getItem(ADMIN_SESSION_KEY);
+        if (storedSession) {
+          const sessionData = JSON.parse(storedSession);
+          const now = Date.now();
+          if (now - sessionData.timestamp < TWENTY_FOUR_HOURS) {
+            setIsAdminAuthenticated(true);
+          } else {
+            localStorage.removeItem(ADMIN_SESSION_KEY);
+          }
+        }
+
+        // 2. Check for User Auth
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser({
@@ -155,6 +170,22 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      const { error: orderUpdateError } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (orderUpdateError) throw orderUpdateError;
+      
+      await fetchData();
+      alert(`✅ Order status updated to: ${newStatus.toUpperCase()}`);
+    } catch (err: any) {
+      alert("❌ Operational Error: " + err.message);
+    }
+  };
+
   const resetToShop = () => {
     setCurrentView('shop');
     setSelectedProduct(null);
@@ -164,6 +195,12 @@ const App: React.FC = () => {
   };
 
   const handleAdminAccessTrigger = () => {
+    // If already authenticated, skip modal and go straight to panel
+    if (isAdminAuthenticated) {
+      setCurrentView('admin');
+      return;
+    }
+
     const now = Date.now();
     if (now - lastClickTime.current > 3000) clickCount.current = 1;
     else clickCount.current += 1;
@@ -174,6 +211,12 @@ const App: React.FC = () => {
       setShowAdminPassModal(true);
       setAdminInputPass('');
     }
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem(ADMIN_SESSION_KEY);
+    setIsAdminAuthenticated(false);
+    resetToShop();
   };
 
   if (loading) return (
@@ -253,6 +296,24 @@ const App: React.FC = () => {
           }} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
           <CheckoutView items={cart} onBack={resetToShop} onSuccess={async (order) => {
+            // 1. DEDUCT STOCK IMMEDIATELY ON SUCCESSFUL CHECKOUT
+            for (const item of order.items) {
+              const { data: currentProduct } = await supabase
+                .from('products')
+                .select('stock')
+                .eq('id', item.id)
+                .single();
+              
+              if (currentProduct) {
+                const newStock = Math.max(0, currentProduct.stock - item.quantity);
+                await supabase
+                  .from('products')
+                  .update({ stock: newStock })
+                  .eq('id', item.id);
+              }
+            }
+
+            // 2. CREATE THE ORDER
             const { error } = await supabase.from('orders').insert([{
               user_id: user?.id,
               items: order.items,
@@ -265,11 +326,14 @@ const App: React.FC = () => {
               transaction_id: order.transactionId,
               screenshot_url: order.screenshotUrl
             }]);
+
             if (!error) {
-              alert("✅ Order Placed Successfully!");
+              alert("✅ Order Placed Successfully! Stock has been updated.");
               setCart([]);
               resetToShop();
               fetchData();
+            } else {
+              alert("❌ Order Creation Error: " + error.message);
             }
           }} />
         ) : currentView === 'profile' && user ? (
@@ -286,11 +350,7 @@ const App: React.FC = () => {
             onAddProduct={handleAddProduct} 
             onUpdateProduct={handleUpdateProduct}
             onDeleteProduct={handleDeleteProduct} 
-            onUpdateOrderStatus={async (id, s) => {
-              const { error } = await supabase.from('orders').update({ status: s }).eq('id', id);
-              if (!error) await fetchData();
-              else alert("❌ Error updating status: " + error.message);
-            }}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
             onDeleteOrder={async (id) => {
               if (confirm('Permanently delete this order record?')) {
                 const { error } = await supabase.from('orders').delete().eq('id', id);
@@ -298,7 +358,7 @@ const App: React.FC = () => {
                 else alert("❌ Error deleting order: " + error.message);
               }
             }}
-            onBack={resetToShop} 
+            onBack={handleAdminLogout} 
           />
         ) : (
           <div className="text-center py-20">
@@ -312,7 +372,6 @@ const App: React.FC = () => {
       {showAdminPassModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-2xl transition-all duration-700">
           <div className="relative bg-white/90 rounded-[4rem] p-12 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.25)] animate-in zoom-in-95 duration-500 w-full max-w-[500px] flex flex-col items-center border border-white/50">
-            {/* Owner Section */}
             <div className="relative mb-8 group">
               <div className="absolute inset-[-12px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-green-400 opacity-60 blur-sm animate-[spin_8s_linear_infinite]"></div>
               <div className="relative w-40 h-40 rounded-full border-[6px] border-white overflow-hidden shadow-2xl z-10 transition-transform group-hover:scale-105 duration-500">
@@ -334,6 +393,8 @@ const App: React.FC = () => {
             <form className="w-full space-y-8" onSubmit={(e) => { 
                 e.preventDefault(); 
                 if(adminInputPass === ADMIN_PASSWORD) { 
+                  const sessionData = { auth: true, timestamp: Date.now() };
+                  localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(sessionData));
                   setIsAdminAuthenticated(true); 
                   setCurrentView('admin'); 
                   setShowAdminPassModal(false); 
