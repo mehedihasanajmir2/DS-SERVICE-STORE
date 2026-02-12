@@ -8,10 +8,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     id: 'e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5', 
     name: 'New 1 Apple id',
     description: 'Freshly created, not verified Apple ID. Secure and ready for immediate use across all your Apple devices.',
-    price: 0.30,
+    price: 0,
     category: 'New Apple Account',
     image: 'https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj',
-    stock: 100,
+    stock: 0,
     rating: 4.9,
     is_published: true
   },
