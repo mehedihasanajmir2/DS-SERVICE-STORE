@@ -1,11 +1,11 @@
 
 import { Product } from './types';
 
-export const CATEGORIES = ['All', 'New Apple Account', 'Old Apple Account', 'All Type Icloud', 'All Type Virtual Card', 'All Type Gmail Id'];
+export const CATEGORIES = ['All', 'New Apple Account', 'Old Apple Account', 'All Type Icloud', 'All Type Virtual Card', 'All Type Gmail Id', 'All Type Facebook Id'];
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
-    id: 'e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5', // Updated to valid UUID format
+    id: 'e5e5e5e5-e5e5-e5e5-e5e5-e5e5e5e5e5e5', 
     name: 'New 1 Apple id',
     description: 'Freshly created, not verified Apple ID. Secure and ready for immediate use across all your Apple devices.',
     price: 0.20,
@@ -73,5 +73,15 @@ export const INITIAL_PRODUCTS: Product[] = [
     image: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
     stock: 1500,
     rating: 4.8
+  },
+  {
+    id: 'f7f7f7f7-f7f7-f7f7-f7f7-f7f7f7f7f7f7',
+    name: 'Fresh Facebook ID',
+    description: 'New and fresh Facebook accounts for marketing, business activities, or personal use. High quality and secure.',
+    price: 0.22,
+    category: 'All Type Facebook Id',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg',
+    stock: 1200,
+    rating: 4.7
   }
 ];
