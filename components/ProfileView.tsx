@@ -106,7 +106,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
           <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm h-full flex flex-col">
             <div className="p-8 border-b border-slate-50 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Purchase History</h3>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Orders History</h3>
                 <p className="text-xs font-bold text-slate-400 mt-1">Real-time status of your digital orders</p>
               </div>
               {stats.pendingOrders > 0 && (
