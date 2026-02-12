@@ -9,8 +9,11 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onViewDetails }) => {
+  const isLowStock = product.stock > 0 && product.stock <= 10;
+  const isOutOfStock = product.stock === 0;
+
   return (
-    <div className="group bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1">
+    <div className="group bg-white rounded-2xl border border-slate-200 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 flex flex-col h-full">
       <div 
         className="aspect-square overflow-hidden bg-slate-100 cursor-pointer relative"
         onClick={() => onViewDetails(product)}
@@ -27,7 +30,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         </div>
       </div>
       
-      <div className="p-5">
+      <div className="p-5 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
             {product.name}
@@ -35,19 +38,22 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           <span className="font-bold text-indigo-600 text-lg">${product.price.toFixed(2)}</span>
         </div>
         
-        <p className="text-slate-500 text-sm line-clamp-2 mb-4 min-h-[40px]">
+        <p className="text-slate-500 text-sm line-clamp-2 mb-3 min-h-[40px]">
           {product.description}
         </p>
         
-        <div className="flex items-center gap-2 mb-4">
-            <div className="flex text-yellow-400">
-                {[...Array(5)].map((_, i) => (
-                    <svg key={i} className={`w-4 h-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-300'}`} viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                ))}
+        {/* STOCK STATUS SECTION */}
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-1.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${isOutOfStock ? 'bg-red-500' : isLowStock ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`}></div>
+                <span className={`text-[11px] font-black uppercase tracking-tighter ${isOutOfStock ? 'text-red-500' : isLowStock ? 'text-amber-600' : 'text-slate-500'}`}>
+                    {isOutOfStock ? 'Out of Stock' : `Stock: ${product.stock} Units`}
+                </span>
             </div>
-            <span className="text-xs text-slate-400 font-medium">({product.rating})</span>
+            <div className="flex items-center gap-1">
+                <svg className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                <span className="text-[10px] font-bold text-slate-400">{product.rating}</span>
+            </div>
         </div>
 
         <button 
@@ -55,21 +61,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
             e.stopPropagation();
             onAddToCart(product);
           }}
-          disabled={product.stock === 0}
-          className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2
-            ${product.stock > 0 
-              ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-sm active:scale-95' 
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+          disabled={isOutOfStock}
+          className={`w-full py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-auto
+            ${!isOutOfStock 
+              ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg active:scale-95' 
+              : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
             }`}
         >
-          {product.stock > 0 ? (
+          {!isOutOfStock ? (
             <>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
               Add to Cart
             </>
-          ) : 'Out of Stock'}
+          ) : 'Sold Out'}
         </button>
       </div>
     </div>

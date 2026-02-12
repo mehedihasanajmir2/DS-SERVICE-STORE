@@ -8,6 +8,7 @@ export interface Product {
   image: string;
   stock: number;
   rating: number;
+  is_published?: boolean;
 }
 
 export interface CartItem extends Product {
@@ -36,4 +37,4 @@ export interface Order {
   screenshotUrl?: string;
 }
 
-export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin';
+export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin' | 'profile';

@@ -26,6 +26,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
   // Sync mode with initialMode prop when it changes (e.g., from App.tsx)
   useEffect(() => {
     setMode(initialMode);
+    setError(null);
+    setSuccessMsg(null);
   }, [initialMode, isOpen]);
 
   if (!isOpen) return null;
@@ -49,13 +51,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
 
         if (signUpError) {
           if (signUpError.message.toLowerCase().includes('already registered') || signUpError.status === 422) {
-            throw new Error('This Gmail is already created');
+            throw new Error('This Gmail is already registered. Please Sign In.');
           }
           throw signUpError;
         }
         
+        // Robust check for existing users (Supabase returns empty identities if user exists and confirm is off)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          throw new Error('This Gmail is already registered. Please Sign In.');
+        }
+
         if (data.user) {
-          setSuccessMsg(`We've sent a confirmation link to ${formData.email}. Please check your inbox.`);
+          setSuccessMsg(`✅ Account created successfully! Now enter your Gmail and password to Sign In.`);
+          setFormData(prev => ({ ...prev, password: '' }));
+          setTimeout(() => {
+            setMode('signin');
+            setSuccessMsg(null);
+          }, 3000);
         }
       } else if (mode === 'signin') {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -63,7 +75,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
           password: formData.password,
         });
 
-        if (signInError) throw signInError;
+        if (signInError) {
+          if (signInError.message.includes('Invalid login credentials')) {
+            throw new Error('Incorrect Gmail or Password. Please try again.');
+          }
+          throw signInError;
+        }
 
         if (data.user) {
           onLogin({

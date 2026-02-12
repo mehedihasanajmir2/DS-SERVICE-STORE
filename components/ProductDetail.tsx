@@ -134,13 +134,19 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onAddToCa
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                       </svg>
                       <span className="text-slate-900">Stock Status:</span>
-                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-md">{product.stock} Units Available</span>
+                      <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-md font-black">{product.stock} Units Available</span>
                     </li>
                     <li className="flex items-center gap-3 text-sm font-bold">
                       <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                       </svg>
                       Instant Activation & Delivery
+                    </li>
+                    <li className="flex items-center gap-3 text-sm font-bold">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                      24 Hours Replacement Guarantee
                     </li>
                     <li className="flex items-center gap-3 text-sm font-bold">
                       <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

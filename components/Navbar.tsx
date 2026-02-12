@@ -71,10 +71,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setView, cartCount,
             {user ? (
               <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
                 <div className="hidden sm:block text-right">
-                  <p className="text-xs font-black text-slate-900">{user.name}</p>
+                  <p className="text-xs font-black text-slate-900 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => setView('profile')}>{user.name}</p>
                   <button onClick={onLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-tighter">Sign Out</button>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-green-400 p-[2px]">
+                <div 
+                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-green-400 p-[2px] cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setView('profile')}
+                >
                     <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center text-xs font-black text-blue-600">
                         {user.name.charAt(0)}
                     </div>
