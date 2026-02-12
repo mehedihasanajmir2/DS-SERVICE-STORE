@@ -147,7 +147,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
           </svg>
         </button>
         <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
-          {step === 'details' ? 'Secure Checkout' : 'Submit Payment Proof'}
+          {step === 'details' ? 'Payment Checkout' : 'Submit Payment Proof'}
         </h1>
       </div>
 
@@ -216,14 +216,28 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
 
                   {paymentMethod === 'ssl' && (
                     <div className="animate-in slide-in-from-top-2 duration-300 bg-slate-900 rounded-3xl p-6 text-white border border-white/10 shadow-2xl space-y-4">
-                      <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Send Money (Personal)</span>
-                          <span className="text-xl font-black tracking-widest text-pink-400 font-mono">{bdNumber}</span>
+                      <div className="space-y-3">
+                        {/* Bkash Details */}
+                        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bkash (Personal)</span>
+                            <span className="text-xl font-black tracking-widest text-pink-400 font-mono">{bdNumber}</span>
+                          </div>
+                          <button onClick={() => copyToClipboard(bdNumber, 'bkash')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500' : 'bg-white/10 hover:bg-white/20'}`}>
+                            {copiedId === 'bkash' ? 'Copied!' : 'Copy'}
+                          </button>
                         </div>
-                        <button onClick={() => copyToClipboard(bdNumber, 'bkash')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'bkash' ? 'bg-pink-500' : 'bg-white/10'}`}>
-                          {copiedId === 'bkash' ? 'Copied!' : 'Copy'}
-                        </button>
+                        {/* Nagad Details */}
+                        <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Nagad (Personal)</span>
+                            <span className="text-xl font-black tracking-widest text-orange-400 font-mono">{bdNumber}</span>
+                          </div>
+                          <button onClick={() => copyToClipboard(bdNumber, 'nagad')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${copiedId === 'nagad' ? 'bg-orange-500' : 'bg-white/10 hover:bg-white/20'}`}>
+                            {copiedId === 'nagad' ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center px-4">Send Money as Personal payment</p>
                       </div>
                     </div>
                   )}
