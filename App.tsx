@@ -27,7 +27,6 @@ const App: React.FC = () => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot' | 'update'>('signin');
   const [loading, setLoading] = useState(true);
   
-  // AI State
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -258,12 +257,31 @@ const App: React.FC = () => {
   };
 
   const handleUpdateProduct = async (id: string, updatedFields: Partial<Product>) => {
-    const { data, error } = await supabase.from('products').update(updatedFields).eq('id', id).select();
-    if (!error && data) {
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data[0] } : p));
-      alert("✅ Product Updated Successfully!");
-    } else {
-      alert("Error updating product: " + error?.message);
+    try {
+      // আমরা ID ছাড়া বাকি সব ফিল্ড আপডেট করবো
+      const { id: _, ...fieldsToUpdate } = updatedFields as any;
+      const { data, error } = await supabase
+        .from('products')
+        .update(fieldsToUpdate)
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        // যদি ডাটাবেসে এই আইডি না পাওয়া যায় (যেমন হার্ডকোড করা ডাটা হলে)
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, ...fieldsToUpdate } : p));
+        alert("⚠️ Local update applied. (Not found in database)");
+      } else {
+        // ডাটাবেস আপডেট সফল হলে
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data[0] } : p));
+        alert("✅ Product Updated Successfully in Database!");
+      }
+    } catch (err: any) {
+      console.error("Update error:", err);
+      alert("❌ Error updating product: " + err.message);
+      // এরর খেলেও লোকাললি আপডেট করে দেই যাতে ইউজার দেখতে পায়
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updatedFields } : p));
     }
   };
 
@@ -364,7 +382,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Floating AI Consultant Button with Robot Icon */}
       <button 
         onClick={() => setShowAiModal(true)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 md:w-16 md:h-16 bg-slate-900 text-white rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-600 transition-all hover:scale-110 active:scale-90 border-2 border-white/10 group overflow-hidden"
@@ -372,16 +389,13 @@ const App: React.FC = () => {
       >
         <div className="absolute inset-0 rounded-full border-2 border-cyan-400 border-t-transparent animate-[spin_4s_linear_infinite] group-hover:animate-none opacity-50"></div>
         <div className="relative w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-          {/* Robot SVG */}
           <svg viewBox="0 0 24 24" className="w-full h-full text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]" fill="currentColor">
             <path d="M12,2A2,2 0 0,1 14,4V5H15A2,2 0 0,1 17,7V11H18A2,2 0 0,1 20,13V17A2,2 0 0,1 18,19H17V21A2,2 0 0,1 15,23H9A2,2 0 0,1 7,21V19H6A2,2 0 0,1 4,17V13A2,2 0 0,1 6,11H7V7A2,2 0 0,1 9,5H10V4A2,2 0 0,1 12,2M9,7V17H15V7H9M12,10A1,1 0 0,1 13,11A1,1 0 0,1 12,12A1,1 0 0,1 11,11A1,1 0 0,1 12,10M9,18V21H15V18H9Z" />
           </svg>
-          {/* Letter M on Chest */}
           <span className="absolute top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] md:text-[11px] font-black text-slate-900 select-none tracking-tighter">M</span>
         </div>
       </button>
 
-      {/* AI Assistant Modal */}
       {showAiModal && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onClick={() => setShowAiModal(false)} />

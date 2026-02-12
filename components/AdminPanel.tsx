@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Product, Order } from '../types';
-import { CATEGORIES } from '../constants';
+import { CATEGORIES, INITIAL_PRODUCTS } from '../constants';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
@@ -23,10 +23,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onUpdateOrderStatus,
   onBack 
 }) => {
-  const [activeTab, setActiveTab] = useState<'inventory' | 'orders'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'setup'>('inventory');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -39,6 +41,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     stock: 10,
     rating: 5
   });
+
+  const sqlSetup = `-- 1. Create 'products' table
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL,
+  category TEXT NOT NULL,
+  image TEXT,
+  stock INTEGER DEFAULT 0,
+  rating NUMERIC DEFAULT 5
+);
+
+-- 2. Create 'orders' table
+CREATE TABLE orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT,
+  items JSONB NOT NULL,
+  total NUMERIC NOT NULL,
+  status TEXT DEFAULT 'pending',
+  full_name TEXT,
+  whatsapp_number TEXT,
+  delivery_email TEXT,
+  payment_method TEXT,
+  transaction_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  screenshot_url TEXT
+);
+
+-- 3. Enable Storage (Go to Storage tab and create 'products' bucket with PUBLIC access)`;
+
+  const handleSyncData = async () => {
+    if (!confirm("This will push all default demo products to your Supabase database. Continue?")) return;
+    
+    setIsSyncing(true);
+    try {
+      // Remove hardcoded IDs so Supabase generates new ones
+      const productsToSync = INITIAL_PRODUCTS.map(({ id, ...rest }) => rest);
+      
+      const { error } = await supabase
+        .from('products')
+        .insert(productsToSync);
+
+      if (error) throw error;
+      
+      alert("✅ Success! All demo products have been synced to your Supabase database. Please refresh the page.");
+      window.location.reload();
+    } catch (error: any) {
+      alert("❌ Sync Failed: " + error.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -87,14 +142,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId) {
-      onUpdateProduct(editingId, formData);
-    } else {
-      onAddProduct(formData);
+    setSaving(true);
+    try {
+      if (editingId) {
+        await onUpdateProduct(editingId, formData);
+      } else {
+        await onAddProduct(formData);
+      }
+      resetForm();
+    } catch (err) {
+      console.error("Submit Error:", err);
+    } finally {
+      setSaving(false);
     }
-    resetForm();
   };
 
   const resetForm = () => {
@@ -123,19 +185,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-4 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
+      <div className="flex flex-wrap gap-4 mb-8 bg-slate-100 p-1.5 rounded-2xl w-fit">
         <button 
           onClick={() => setActiveTab('inventory')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Product Catalog
         </button>
         <button 
           onClick={() => setActiveTab('orders')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'orders' ? 'bg-white text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
         >
           Customer Orders ({orders.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('setup')}
+          className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'setup' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Database Setup Guide 🛠️
         </button>
       </div>
 
@@ -238,8 +305,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <button type="submit" disabled={uploading} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50">
-                    {editingId ? 'Save Changes' : 'Publish Listing'}
+                  <button 
+                    type="submit" 
+                    disabled={uploading || saving} 
+                    className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {saving ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (editingId ? 'Save Changes' : 'Publish Listing')}
                   </button>
                 </div>
               </div>
@@ -283,7 +362,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
         </>
-      ) : (
+      ) : activeTab === 'orders' ? (
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -363,9 +442,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </table>
           </div>
         </div>
+      ) : (
+        <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-12 shadow-sm animate-in zoom-in-95">
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-6">Supabase Database Setup Guide</h2>
+          
+          {/* Quick Sync Card */}
+          <div className="mb-10 p-8 bg-indigo-900 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+            <div className="relative z-10">
+              <h3 className="text-xl font-black uppercase tracking-tight mb-2">Sync Demo Products</h3>
+              <p className="text-indigo-200 text-sm mb-6 max-w-md">আপনার ডাটাবেসটি কি এখন খালি? নিচের বাটনে ক্লিক করলে কোডের সব ডেমো প্রোডাক্ট এক ক্লিকে আপনার সুুপাবাস ডাটাবেসে সেভ হয়ে যাবে।</p>
+              <button 
+                onClick={handleSyncData}
+                disabled={isSyncing}
+                className={`px-8 py-4 bg-white text-indigo-900 rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all flex items-center gap-3 shadow-lg ${isSyncing ? 'opacity-50' : ''}`}
+              >
+                {isSyncing ? (
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+                {isSyncing ? 'Syncing...' : 'Sync Initial Data to DB'}
+              </button>
+            </div>
+          </div>
+
+          <p className="text-slate-600 mb-8 leading-relaxed">
+            আপনার ডাটাবেসটি ম্যানুয়ালি সঠিকভাবে কাজ করার জন্য নিচের SQL কোডটি কপি করে আপনার Supabase প্রজেক্টের <b>SQL Editor</b>-এ রান করুন। এটি প্রয়োজনীয় টেবিলগুলো তৈরি করে দিবে।
+          </p>
+          
+          <div className="relative group">
+            <pre className="bg-slate-900 text-cyan-400 p-6 rounded-3xl overflow-x-auto text-xs font-mono leading-relaxed shadow-2xl border border-white/10">
+              {sqlSetup}
+            </pre>
+            <button 
+              onClick={() => { navigator.clipboard.writeText(sqlSetup); alert('SQL Copied to clipboard!'); }}
+              className="absolute top-4 right-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+            >
+              Copy SQL
+            </button>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+              <h4 className="text-sm font-black text-blue-900 uppercase tracking-tight mb-2">1. টেবিল তৈরি</h4>
+              <p className="text-xs text-blue-700 leading-relaxed font-medium">উপরের SQL কোডটি Supabase SQL Editor-এ রান করলে `products` এবং `orders` টেবিল তৈরি হয়ে যাবে। এরপরই আপনি ওয়েবসাইট থেকে সার্ভিস যোগ করতে পারবেন।</p>
+            </div>
+            <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100">
+              <h4 className="text-sm font-black text-indigo-900 uppercase tracking-tight mb-2">2. স্টোরেজ সেটআপ</h4>
+              <p className="text-xs text-indigo-700 leading-relaxed font-medium">ইমেজ আপলোড করার জন্য Supabase Storage-এ গিয়ে `products` নামে একটি <b>Public</b> বাকেট তৈরি করুন। অন্যথায় ইমেজ সেভ হবে না।</p>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Order Detail Modal */}
       {selectedOrder && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onClick={() => setSelectedOrder(null)} />
@@ -382,7 +517,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="flex-1 overflow-y-auto p-8 lg:p-12">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* Left Col: Info */}
                 <div className="space-y-10">
                   <section>
                     <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Customer Info</h3>
@@ -433,7 +567,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </section>
                 </div>
 
-                {/* Right Col: Screenshot */}
                 <div>
                   <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Payment Proof</h3>
                   {selectedOrder.screenshotUrl ? (
