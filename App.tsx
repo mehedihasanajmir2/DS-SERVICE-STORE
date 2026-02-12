@@ -308,18 +308,30 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* ADMIN PASS MODAL */}
+      {/* ULTRA-PREMIUM ADMIN PASS MODAL */}
       {showAdminPassModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xl">
-          <div className="bg-white rounded-[4rem] p-12 shadow-2xl animate-in zoom-in-95 duration-500 w-full max-w-[500px] flex flex-col items-center">
-            <div className="relative mb-8">
-              <div className="absolute inset-[-8px] rounded-full bg-gradient-to-tr from-[#14F195] via-[#22d3ee] to-[#6366f1] opacity-60"></div>
-              <div className="relative w-36 h-36 rounded-full border-4 border-white overflow-hidden shadow-xl z-10">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-2xl transition-all duration-700">
+          <div className="relative bg-white/90 rounded-[4rem] p-12 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.25)] animate-in zoom-in-95 duration-500 w-full max-w-[500px] flex flex-col items-center border border-white/50">
+            {/* Owner Section */}
+            <div className="relative mb-8 group">
+              <div className="absolute inset-[-12px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-green-400 opacity-60 blur-sm animate-[spin_8s_linear_infinite]"></div>
+              <div className="relative w-40 h-40 rounded-full border-[6px] border-white overflow-hidden shadow-2xl z-10 transition-transform group-hover:scale-105 duration-500">
                 <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
               </div>
+              <div className="absolute -bottom-1 right-2 w-10 h-10 bg-blue-600 rounded-full border-4 border-white flex items-center justify-center z-20 shadow-lg">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" /></svg>
+              </div>
             </div>
-            <h2 className="text-3xl font-black text-[#0f172a] uppercase tracking-tight mb-8">Owner Identity</h2>
-            <form className="w-full space-y-6" onSubmit={(e) => { 
+
+            <div className="text-center mb-10">
+              <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-2">Mehedi Hasan</h2>
+              <div className="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 rounded-full shadow-lg">
+                  <span className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.25em]">Owner Identity Verified</span>
+              </div>
+            </div>
+
+            <form className="w-full space-y-8" onSubmit={(e) => { 
                 e.preventDefault(); 
                 if(adminInputPass === ADMIN_PASSWORD) { 
                   setIsAdminAuthenticated(true); 
@@ -330,10 +342,21 @@ const App: React.FC = () => {
                   setTimeout(() => setAdminError(false), 2000);
                 } 
               }}>
-              <input autoFocus type="password" placeholder="ENTER MASTER KEY" className={`w-full px-8 py-7 bg-slate-50 border-2 rounded-3xl outline-none text-center font-black tracking-[0.3em] transition-all text-lg ${adminError ? 'border-red-500 bg-red-50' : 'border-slate-50 focus:border-slate-100'}`} value={adminInputPass} onChange={e => setAdminInputPass(e.target.value)} />
+              <div className="relative">
+                <input 
+                  autoFocus 
+                  type="password" 
+                  placeholder="MASTER KEY REQUIRED" 
+                  className={`w-full px-8 py-7 bg-slate-50 border-2 rounded-3xl outline-none text-center font-black tracking-[0.4em] transition-all text-xl shadow-inner ${adminError ? 'border-red-500 bg-red-50 text-red-600 animate-bounce' : 'border-slate-100 focus:border-blue-600 focus:bg-white focus:shadow-2xl focus:shadow-blue-100'}`} 
+                  value={adminInputPass} 
+                  onChange={e => setAdminInputPass(e.target.value)} 
+                />
+                {adminError && <p className="absolute -bottom-6 left-0 right-0 text-center text-[10px] font-black text-red-500 uppercase tracking-widest">Unauthorized Access Detected</p>}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
-                <button type="button" onClick={() => setShowAdminPassModal(false)} className="py-5 bg-slate-50 text-slate-500 rounded-3xl font-black uppercase text-xs">Cancel</button>
-                <button type="submit" className="py-5 bg-[#0f172a] text-white rounded-3xl font-black uppercase text-xs">Unlock</button>
+                <button type="button" onClick={() => setShowAdminPassModal(false)} className="py-5 bg-slate-100 text-slate-500 rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-slate-200 transition-all hover:scale-105">Cancel</button>
+                <button type="submit" className="py-5 bg-slate-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest hover:bg-blue-600 transition-all hover:scale-105 shadow-xl shadow-slate-200 flex items-center justify-center gap-2">Unlock Access <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
               </div>
             </form>
           </div>

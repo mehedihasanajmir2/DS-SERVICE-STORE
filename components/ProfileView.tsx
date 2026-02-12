@@ -21,7 +21,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
       .filter(o => o.status === 'confirmed' || o.status === 'delivered')
       .reduce((sum, o) => sum + o.total, 0);
     
-    const pendingOrders = userOrders.filter(o => o.status === 'pending').length;
+    const pendingOrders = userOrders.filter(o => o.status === 'pending' || o.status === 'confirmed').length;
 
     return {
       totalOrders: userOrders.length,
@@ -145,11 +145,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
                         </td>
                         <td className="px-8 py-6 text-center">
                           <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shadow-sm ${
-                            order.status === 'confirmed' || order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-600' :
+                            order.status === 'confirmed' ? 'bg-blue-50 border-blue-200 text-blue-600' :
+                            order.status === 'delivered' ? 'bg-green-50 border-green-200 text-green-600 shadow-inner' :
                             order.status === 'cancelled' ? 'bg-red-50 border-red-200 text-red-600' :
                             'bg-amber-50 border-amber-200 text-amber-600'
                           }`}>
-                            {order.status}
+                            {order.status === 'delivered' ? '✅ Delivered' : order.status}
                           </span>
                         </td>
                         <td className="px-8 py-6 text-right">
@@ -194,6 +195,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
             </div>
 
             <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
+                {selectedOrderDetails.status === 'delivered' && (
+                    <div className="bg-green-600 text-white p-6 rounded-[2rem] shadow-xl shadow-green-100 flex items-center gap-6 animate-pulse">
+                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <div>
+                            <h4 className="font-black uppercase tracking-widest text-lg">Delivery Successful</h4>
+                            <p className="text-xs font-bold text-green-100">Your digital products have been fulfilled and sent to your email.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Tracking</p>
