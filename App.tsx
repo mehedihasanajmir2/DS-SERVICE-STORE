@@ -10,13 +10,14 @@ import { AuthModal } from './components/AuthModal';
 import { AdminPanel } from './components/AdminPanel';
 import { ProductRain } from './components/ProductRain';
 import { ProfileView } from './components/ProfileView';
-import { Product, CartItem, User, View, Order } from './types';
-import { INITIAL_PRODUCTS, CATEGORIES } from './constants';
+import { HeroBanner } from './components/HeroBanner';
+import { Product, CartItem, User, View, Order, Category } from './types';
+import { INITIAL_PRODUCTS } from './constants';
 import { supabase } from './supabaseClient';
-import { getProductRecommendations } from './services/geminiService';
 
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentView, setCurrentView] = useState<View>('shop');
@@ -32,7 +33,6 @@ const App: React.FC = () => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminPassModal, setShowAdminPassModal] = useState(false);
   const [adminInputPass, setAdminInputPass] = useState('');
-  const [adminError, setAdminError] = useState(false);
   
   const shopSectionRef = useRef<HTMLDivElement>(null);
   const clickCount = useRef(0);
@@ -45,13 +45,23 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     try {
+      // Fetch Categories
+      const { data: dbCats, error: catError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (!catError && dbCats) {
+        setCategories(dbCats);
+      }
+
+      // Fetch Products
       const { data: dbProducts, error: prodError } = await supabase
         .from('products')
         .select('*')
         .order('name', { ascending: true });
       
       if (!prodError && dbProducts) {
-        // FIX: Cast dbProducts to any[] to avoid 'unknown' type error during .map()
         const mappedProducts = (dbProducts as any[]).map((p: any) => ({
           ...p,
           isPublic: p.is_public !== undefined ? p.is_public : true
@@ -61,13 +71,13 @@ const App: React.FC = () => {
         setProducts(INITIAL_PRODUCTS);
       }
 
+      // Fetch Orders
       const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (!orderError && dbOrders) {
-        // FIX: Cast dbOrders to any[] to avoid 'unknown' type error during .map()
         const mappedOrders = (dbOrders as any[]).map((o: any) => ({
           id: o.id,
           userId: o.user_id,
@@ -123,7 +133,103 @@ const App: React.FC = () => {
     initialize();
   }, []);
 
-  // Filter products for the current user and search
+  // Category CRUD
+  const handleAddCategory = async (name: string) => {
+    const { error } = await supabase.from('categories').insert([{ name }]);
+    if (error) {
+      alert("❌ Tab Create Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleUpdateCategory = async (id: string, name: string) => {
+    const { error } = await supabase.from('categories').update({ name }).eq('id', id);
+    if (error) {
+      alert("❌ Tab Update Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) {
+      alert("❌ Tab Delete Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  // Admin CRUD Implementations
+  const handleAddProduct = async (p: Omit<Product, 'id'>) => {
+    const { error } = await supabase.from('products').insert([{
+      name: p.name,
+      description: p.description,
+      price: p.price,
+      category: p.category,
+      image: p.image,
+      stock: p.stock,
+      rating: p.rating,
+      is_public: p.isPublic
+    }]);
+    if (error) {
+      alert("❌ Save Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleUpdateProduct = async (id: string, p: Partial<Product>) => {
+    const updateData: any = { ...p };
+    if (p.isPublic !== undefined) {
+      updateData.is_public = p.isPublic;
+      delete updateData.isPublic;
+    }
+    
+    const { error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id);
+      
+    if (error) {
+      alert("❌ Update Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      alert("❌ Delete Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+    if (error) {
+      alert("❌ Status Update Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const handleDeleteOrder = async (id: string) => {
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) {
+      alert("❌ Order Delete Error: " + error.message);
+      return;
+    }
+    await fetchData();
+  };
+
+  const dynamicCategories = useMemo(() => {
+    return ['All', ...categories.map(c => c.name)];
+  }, [categories]);
+
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
       const isVisible = currentView === 'admin' || p.isPublic;
@@ -133,85 +239,6 @@ const App: React.FC = () => {
       return isVisible && matchesCategory && matchesSearch;
     });
   }, [products, selectedCategory, searchQuery, currentView]);
-
-  // Group products by category for the "All" view
-  // FIX: Explicitly typed the useMemo return to ensure Record<string, Product[]>
-  const groupedProducts = useMemo<Record<string, Product[]>>(() => {
-    const groups: Record<string, Product[]> = {};
-    const visibleProducts = products.filter(p => p.isPublic && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())));
-    
-    CATEGORIES.filter(c => c !== 'All').forEach(cat => {
-      const categoryItems = visibleProducts.filter(p => p.category === cat);
-      if (categoryItems.length > 0) {
-        groups[cat] = categoryItems;
-      }
-    });
-    return groups;
-  }, [products, searchQuery]);
-
-  const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
-    try {
-      const fullProduct = {
-        name: newProduct.name,
-        description: newProduct.description,
-        price: newProduct.price,
-        category: newProduct.category,
-        image: newProduct.image,
-        stock: newProduct.stock,
-        rating: newProduct.rating,
-        is_public: newProduct.isPublic,
-        id: crypto.randomUUID()
-      };
-
-      const { error } = await supabase.from('products').insert([fullProduct]);
-      if (error) throw error;
-      
-      alert("✅ Product Added Successfully!");
-      await fetchData();
-    } catch (err: any) {
-      alert("❌ Save Error: " + err.message);
-    }
-  };
-
-  const handleUpdateProduct = async (id: string, updatedFields: Partial<Product>) => {
-    try {
-      const dbPayload: any = { ...updatedFields };
-      if (updatedFields.isPublic !== undefined) {
-        dbPayload.is_public = updatedFields.isPublic;
-        delete dbPayload.isPublic;
-      }
-
-      const { error } = await supabase.from('products').update(dbPayload).eq('id', id);
-      if (error) throw error;
-
-      alert("✅ Changes Saved Successfully!");
-      await fetchData();
-    } catch (err: any) {
-      alert("❌ Save Failed: " + err.message);
-    }
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    try {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (error) throw error;
-      alert("🗑️ Product Removed.");
-      await fetchData();
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    }
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
-    try {
-      const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
-      if (error) throw error;
-      await fetchData();
-      alert(`✅ Order status updated to: ${newStatus.toUpperCase()}`);
-    } catch (err: any) {
-      alert("❌ Operational Error: " + err.message);
-    }
-  };
 
   const resetToShop = () => {
     setCurrentView('shop');
@@ -245,13 +272,10 @@ const App: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 border-4 border-blue-600/10 rounded-full"></div>
-          <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-        </div>
-        <p className="text-slate-900 font-black uppercase tracking-[0.2em] text-xs">Connecting to DS Vault...</p>
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="flex flex-col items-center gap-8">
+        <div className="w-12 h-12 border-[6px] border-[#0F172A] border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-[#0F172A] font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">Server Connection Established</p>
       </div>
     </div>
   );
@@ -271,62 +295,45 @@ const App: React.FC = () => {
 
       {currentView === 'shop' && <ProductTicker products={products.filter(p => p.isPublic)} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 md:py-6 relative z-10">
         {currentView === 'shop' ? (
-          <div className="space-y-16">
-            {/* Hero Section */}
-            <div className="relative rounded-[3rem] overflow-hidden min-h-[450px] flex items-center shadow-2xl border border-white/10"
-              style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000")', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-              <div className="absolute inset-0 bg-slate-900/80"></div>
-              <div className="relative z-10 px-8 md:px-16 w-full lg:w-2/3 text-center md:text-left">
-                <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">DS <span className="text-cyan-400">SERVICE STORE</span></h1>
-                <p className="text-sm font-black text-blue-200 uppercase tracking-[0.15em] mb-8 leading-relaxed">Buy Now Apple id, Icloud id, Gmail, Facebook, virtual Visa cards</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                  <button onClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} className="px-10 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest hover:bg-cyan-400 transition-all shadow-lg active:scale-95">Shop Now</button>
+          <div className="space-y-4 md:space-y-6">
+            
+            {/* New Hero Banner Component */}
+            <HeroBanner onShopClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+
+            {/* Control Bar */}
+            <div ref={shopSectionRef} className="bg-white border border-slate-200 rounded-2xl md:rounded-[2rem] p-1 shadow-sm flex flex-col md:flex-row items-center gap-1 md:gap-4 sticky top-24 z-30">
+                <div className="flex flex-wrap items-center gap-1 w-full md:flex-1 p-1">
+                    {dynamicCategories.map(cat => (
+                        <button 
+                            key={cat} 
+                            onClick={() => setSelectedCategory(cat)} 
+                            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tight md:tracking-widest transition-all whitespace-nowrap
+                                ${selectedCategory === cat 
+                                    ? 'bg-[#0F172A] text-white shadow-md' 
+                                    : 'text-slate-400 hover:bg-slate-50'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
                 </div>
-              </div>
+                <div className="w-full md:w-auto p-1 md:pr-2">
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            placeholder="Search..." 
+                            className="w-full md:w-40 px-4 py-1.5 md:py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none text-[10px] md:text-xs font-bold focus:bg-white focus:border-blue-600 transition-all" 
+                            value={searchQuery} 
+                            onChange={e => setSearchQuery(e.target.value)} 
+                        />
+                    </div>
+                </div>
             </div>
 
-            {/* Filter Bar */}
-            <div ref={shopSectionRef} className="flex flex-col lg:flex-row gap-4 items-center justify-between bg-white/90 backdrop-blur-md p-4 rounded-3xl border border-slate-200 shadow-sm scroll-mt-24 sticky top-24 z-30">
-              <div className="flex gap-2 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 scrollbar-hide">
-                {CATEGORIES.map(cat => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}>{cat}</button>
-                ))}
-              </div>
-              <input type="text" placeholder="Search services..." className="w-full lg:w-72 px-5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-bold" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-            </div>
-
-            {/* Organized Product Layout */}
-            <div className="pb-20 space-y-20">
-              {selectedCategory === 'All' ? (
-                // Show categorized sections when "All" is selected
-                // FIX: Cast Object.entries result to any[][] to prevent 'unknown' error on .map()
-                (Object.entries(groupedProducts) as any[][]).map(([category, items]) => (
-                  <section key={category} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    <div className="flex items-center gap-4">
-                      <div className="h-px flex-1 bg-slate-200"></div>
-                      <h2 className="text-xs font-black text-slate-900 uppercase tracking-[0.3em] px-6 py-2 bg-white border border-slate-200 rounded-full shadow-sm">{category}</h2>
-                      <div className="h-px flex-1 bg-slate-200"></div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                      {(items as Product[]).map(product => (
-                        <ProductCard key={product.id} product={product} onAddToCart={(p) => {
-                           if (!user) { setAuthMode('signin'); setIsAuthModalOpen(true); return; }
-                           setCart(prev => {
-                             const existing = prev.find(item => item.id === p.id);
-                             if (existing) return prev.map(item => item.id === p.id ? { ...item, quantity: item.quantity + 1 } : item);
-                             return [...prev, { ...p, quantity: 1 }];
-                           });
-                           setIsCartOpen(true);
-                        }} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
-                      ))}
-                    </div>
-                  </section>
-                ))
-              ) : (
-                // Show filtered grid when specific tab is selected
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 animate-in fade-in duration-500">
+            <div className="pb-24">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 px-1 md:px-2 animate-in fade-in duration-1000">
                   {filteredProducts.map(product => (
                     <ProductCard key={product.id} product={product} onAddToCart={(p) => {
                        if (!user) { setAuthMode('signin'); setIsAuthModalOpen(true); return; }
@@ -339,11 +346,11 @@ const App: React.FC = () => {
                     }} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
                   ))}
                 </div>
-              )}
               
               {filteredProducts.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-[3rem] border border-slate-100 shadow-inner">
-                  <p className="text-slate-400 font-black uppercase tracking-widest">No services found in this criteria</p>
+                <div className="text-center py-24 bg-white rounded-[3rem] border border-slate-100 shadow-inner">
+                  <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">No services found</p>
+                  <button onClick={resetToShop} className="mt-6 text-blue-600 font-black uppercase tracking-widest text-[9px] hover:underline">Return to Home</button>
                 </div>
               )}
             </div>
@@ -360,7 +367,6 @@ const App: React.FC = () => {
           }} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
           <CheckoutView items={cart} onBack={resetToShop} onSuccess={async (order) => {
-            // Success logic remains the same
             const { error } = await supabase.from('orders').insert([{
               user_id: user?.id,
               items: order.items,
@@ -369,9 +375,9 @@ const App: React.FC = () => {
               full_name: order.fullName,
               whatsapp_number: order.whatsappNumber,
               delivery_email: order.deliveryEmail,
-              payment_method: order.payment_method,
-              transaction_id: order.transaction_id,
-              screenshot_url: order.screenshot_url
+              payment_method: order.paymentMethod,
+              transaction_id: order.transactionId,
+              screenshot_url: order.screenshotUrl
             }]);
             if (!error) {
               alert("✅ Order Placed Successfully!");
@@ -383,43 +389,69 @@ const App: React.FC = () => {
         ) : currentView === 'profile' && user ? (
           <ProfileView user={user} orders={orders} onBack={resetToShop} onUpdatePassword={() => { setAuthMode('update'); setIsAuthModalOpen(true); }} />
         ) : currentView === 'admin' && isAdminAuthenticated ? (
-          <AdminPanel products={products} orders={orders} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} onDeleteProduct={handleDeleteProduct} onUpdateOrderStatus={handleUpdateOrderStatus} onBack={handleAdminLogout} />
+          <AdminPanel 
+            products={products} 
+            orders={orders} 
+            categories={categories}
+            onAddProduct={handleAddProduct} 
+            onUpdateProduct={handleUpdateProduct} 
+            onDeleteProduct={handleDeleteProduct} 
+            onUpdateOrderStatus={handleUpdateOrderStatus}
+            onDeleteOrder={handleDeleteOrder}
+            onAddCategory={handleAddCategory}
+            onUpdateCategory={handleUpdateCategory}
+            onDeleteCategory={handleDeleteCategory}
+            onBack={handleAdminLogout} 
+          />
         ) : (
-          <div className="text-center py-20"><button onClick={resetToShop} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black uppercase">Home</button></div>
+          <div className="text-center py-20"><button onClick={resetToShop} className="px-12 py-5 bg-[#0F172A] text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl">Return to Catalog</button></div>
         )}
       </main>
 
       {showAdminPassModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-2xl transition-all duration-700">
-          <div className="relative bg-white/90 rounded-[4rem] p-12 shadow-2xl animate-in zoom-in-95 duration-500 w-full max-w-[500px] flex flex-col items-center border border-white/50">
-            <div className="relative mb-8 group">
-              <div className="absolute inset-[-12px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-green-400 opacity-60 blur-sm animate-pulse"></div>
-              <div className="relative w-40 h-40 rounded-full border-[6px] border-white overflow-hidden shadow-2xl z-10 transition-transform group-hover:scale-105">
-                <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#0F172A]/80 backdrop-blur-2xl">
+          <div className="relative bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_rgba(0,0,0,0.3)] animate-in zoom-in-95 duration-500 w-full max-w-[480px] flex flex-col items-center border border-white">
+            <div className="relative mb-12 group">
+              <div className="absolute inset-[-15px] rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 opacity-20 blur-2xl group-hover:opacity-40 transition-opacity"></div>
+              <div className="relative w-40 h-40 rounded-full border-[8px] border-white overflow-hidden shadow-2xl z-10">
+                <img src={ownerPhotoUrl} alt="Admin" className="w-full h-full object-cover" />
               </div>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 uppercase mb-8">Master Unlock</h2>
+            <h2 className="text-3xl font-black text-[#0F172A] uppercase mb-10 tracking-tighter">System Key</h2>
             <form className="w-full space-y-6" onSubmit={(e) => { 
                 e.preventDefault(); 
                 if(adminInputPass === ADMIN_PASSWORD) { 
                   localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ auth: true, timestamp: Date.now() }));
                   setIsAdminAuthenticated(true); setCurrentView('admin'); setShowAdminPassModal(false); 
-                } else { setAdminError(true); setTimeout(() => setAdminError(false), 2000); } 
+                } 
               }}>
-              <input type="password" placeholder="ENTER ACCESS KEY" className="w-full px-8 py-6 bg-slate-50 border-2 rounded-3xl text-center font-black tracking-[0.4em] transition-all text-xl" value={adminInputPass} onChange={e => setAdminInputPass(e.target.value)} />
-              <button type="submit" className="w-full py-5 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest hover:bg-blue-600 transition-all">Grant Access</button>
+              <input type="password" placeholder="••••••••" className="w-full px-10 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-center font-black tracking-[0.6em] transition-all text-2xl focus:border-blue-600 focus:bg-white outline-none" value={adminInputPass} onChange={e => setAdminInputPass(e.target.value)} />
+              <button type="submit" className="w-full py-6 bg-[#0F172A] text-white rounded-[2rem] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-2xl shadow-blue-200">Verify Identity</button>
             </form>
           </div>
         </div>
       )}
 
       {currentView !== 'admin' && (
-        <footer className="bg-[#0F172A] text-white/30 py-16 mt-20 border-t border-white/5 relative z-10">
-          <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center md:items-start gap-6">
-            <div className="flex flex-col">
-              <p className="text-[12px] font-black text-slate-300 uppercase tracking-widest">Owner: Mehedi Hasan</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] cursor-pointer hover:text-white" onClick={handleAdminAccessTrigger}>©2005-2025 DS SERVICE STORE</p>
+        <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
+          <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="flex items-center gap-4">
+              {/* DS Store Footer Logo */}
+              <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
+                <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
+                <div className="flex items-baseline relative z-10 font-black text-sm">
+                  <span className="text-blue-600">D</span>
+                  <span className="text-green-500 -ml-0.5">S</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
+                <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>
+                  Mehedi Hasan • DS STORE GLOBAL
+                </p>
+              </div>
             </div>
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2005-2025 DS SERVICE STORE</p>
           </div>
         </footer>
       )}

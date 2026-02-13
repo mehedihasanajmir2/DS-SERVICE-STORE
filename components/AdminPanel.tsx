@@ -1,36 +1,50 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Product, Order, CartItem } from '../types';
-import { CATEGORIES, INITIAL_PRODUCTS } from '../constants';
+import { Product, Order, CartItem, Category } from '../types';
+import { INITIAL_PRODUCTS } from '../constants';
 import { supabase } from '../supabaseClient';
 
 interface AdminPanelProps {
   products: Product[];
   orders: Order[];
+  categories: Category[];
   onAddProduct: (p: Omit<Product, 'id'>) => void;
   onUpdateProduct: (id: string, p: Partial<Product>) => void;
   onDeleteProduct: (id: string) => void;
   onUpdateOrderStatus: (orderId: string, status: Order['status']) => void;
   onDeleteOrder?: (id: string) => void;
+  onAddCategory: (name: string) => void;
+  onUpdateCategory: (id: string, name: string) => void;
+  onDeleteCategory: (id: string) => void;
   onBack: () => void;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ 
   products, 
   orders, 
+  categories,
   onAddProduct, 
   onUpdateProduct,
   onDeleteProduct, 
   onUpdateOrderStatus,
   onDeleteOrder,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
   onBack 
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'help'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'tabs' | 'help'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  
+  // Category Form State
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo";
@@ -39,12 +53,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     name: '',
     description: '',
     price: 0,
-    category: CATEGORIES[1],
+    category: categories.length > 0 ? categories[0].name : '',
     image: '',
     stock: 10,
     rating: 5,
     isPublic: true
   });
+
+  // Effect to set default category when list loads
+  useEffect(() => {
+    if (!formData.category && categories.length > 0) {
+      setFormData(prev => ({ ...prev, category: categories[0].name }));
+    }
+  }, [categories]);
 
   const totalSales = orders.reduce((sum, o) => (o.status === 'confirmed' || o.status === 'delivered') ? sum + o.total : sum, 0);
   const pendingCount = orders.filter(o => o.status === 'pending').length;
@@ -67,12 +88,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         .from('products')
         .upload(filePath, file);
 
-      if (uploadError) {
-        if (uploadError.message.includes('bucket not found')) {
-          throw new Error("Supabase-এ 'products' নামে কোনো Storage Bucket পাওয়া যায়নি। দয়া করে Help ট্যাব দেখুন।");
-        }
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('products').getPublicUrl(filePath);
       
@@ -122,15 +138,49 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const handleCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryName.trim()) return;
+    if (editingCategoryId) {
+      await onUpdateCategory(editingCategoryId, categoryName);
+    } else {
+      await onAddCategory(categoryName);
+    }
+    setCategoryName('');
+    setEditingCategoryId(null);
+    setIsCategoryFormOpen(false);
+  };
+
   const resetForm = () => {
     setIsFormOpen(false);
     setEditingId(null);
-    setFormData({ name: '', description: '', price: 0, category: CATEGORIES[1], image: '', stock: 10, rating: 5, isPublic: true });
+    setFormData({ 
+      name: '', 
+      description: '', 
+      price: 0, 
+      category: categories.length > 0 ? categories[0].name : '', 
+      image: '', 
+      stock: 10, 
+      rating: 5, 
+      isPublic: true 
+    });
   };
 
   const sqlCode = `-- ১. SQL EDITOR-এ গিয়ে এই কোডটি রান করুন:
+CREATE TABLE IF NOT EXISTS categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ডাটা মাইগ্রেশন (ঐচ্ছিক):
+INSERT INTO categories (name) VALUES 
+('Apple (New)'), ('Apple (Old)'), ('iCloud'), ('Virtual Card'), ('Gmail ID'), ('Facebook ID')
+ON CONFLICT (name) DO NOTHING;
+
 ALTER TABLE products ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
 
+-- Products টেবিল আপডেট (যদি না থাকে)
 CREATE TABLE IF NOT EXISTS products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -144,13 +194,18 @@ CREATE TABLE IF NOT EXISTS products (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- সিকিউরিটি
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON products FOR SELECT USING (true);
 CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
+CREATE POLICY "Allow public cat read" ON categories FOR SELECT USING (true);
+CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
 `;
 
   return (
     <div className="animate-in fade-in duration-1000 max-w-7xl mx-auto space-y-10 pb-20">
+      {/* Admin Header */}
       <div className="relative overflow-hidden bg-slate-900 rounded-[3rem] p-8 shadow-2xl border border-white/10 group">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent"></div>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
@@ -183,12 +238,13 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Revenue', value: `$${totalSales.toFixed(2)}`, icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-blue-600' },
           { label: 'Pending Orders', value: pendingCount, icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', color: 'bg-amber-500', alert: pendingCount > 0 },
           { label: 'Low Stock Alerts', value: lowStockCount, icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', color: 'bg-red-500', alert: lowStockCount > 0 },
-          { label: 'Active Inventory', value: products.length, icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', color: 'bg-indigo-600' }
+          { label: 'Categories (Tabs)', value: categories.length, icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z', color: 'bg-indigo-600' }
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm flex items-center justify-between group hover:shadow-xl hover:-translate-y-1 transition-all">
             <div className="space-y-1">
@@ -203,11 +259,13 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
         ))}
       </div>
 
+      {/* Admin Navigation */}
       <div className="bg-slate-100/50 p-2 rounded-[2.5rem] border border-slate-200 flex flex-wrap gap-2 w-fit mx-auto md:mx-0 shadow-inner">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
-          { id: 'inventory', label: 'Product Manager', icon: 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4' },
-          { id: 'orders', label: 'Order Manager', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' }
+          { id: 'inventory', label: 'Products', icon: 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4' },
+          { id: 'tabs', label: 'Tab Manager', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z' },
+          { id: 'orders', label: 'Orders', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' }
         ].map(tab => (
           <button 
             key={tab.id} 
@@ -220,11 +278,86 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
         ))}
       </div>
 
+      {/* Tab Manager Section */}
+      {activeTab === 'tabs' && (
+        <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
+           <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight ml-4">Tab Configuration</h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mt-1">Manage shop categories and navigation tabs</p>
+              </div>
+              <button 
+                onClick={() => { setIsCategoryFormOpen(true); setEditingCategoryId(null); setCategoryName(''); }} 
+                className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-blue-100 hover:bg-slate-900"
+              >
+                Create New Tab
+              </button>
+           </div>
+
+           {isCategoryFormOpen && (
+              <form onSubmit={handleCategorySubmit} className="bg-white rounded-[2.5rem] border-4 border-blue-600/10 p-10 shadow-2xl animate-in zoom-in-95 duration-500 max-w-2xl mx-auto w-full">
+                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-8">
+                   {editingCategoryId ? 'Rename Tab' : 'Establish New Tab'}
+                 </h3>
+                 <div className="space-y-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tab Identifier (Name)</label>
+                       <input 
+                         required 
+                         className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black text-lg focus:border-blue-600 transition-all" 
+                         value={categoryName} 
+                         onChange={e => setCategoryName(e.target.value)}
+                         placeholder="e.g. Premium Gmails"
+                       />
+                    </div>
+                    <div className="flex gap-4">
+                       <button type="submit" className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-slate-900 transition-all">
+                         {editingCategoryId ? 'Sync Changes' : 'Confirm Launch'}
+                       </button>
+                       <button type="button" onClick={() => setIsCategoryFormOpen(false)} className="px-8 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs">Abandon</button>
+                    </div>
+                 </div>
+              </form>
+           )}
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categories.map(cat => (
+                 <div key={cat.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-xl transition-all">
+                    <div className="flex items-center justify-between mb-4">
+                       <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black">
+                          {cat.name.charAt(0)}
+                       </div>
+                       <div className="flex gap-2">
+                          <button 
+                            onClick={() => { setEditingCategoryId(cat.id); setCategoryName(cat.name); setIsCategoryFormOpen(true); }}
+                            className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M18.364 5.364a2.121 2.121 0 013 3L12 18l-4 1 1-4L18.364 5.364z" /></svg>
+                          </button>
+                          <button 
+                            onClick={() => { if(confirm(`Delete "${cat.name}" tab? Existing products will lose this category.`)) onDeleteCategory(cat.id); }}
+                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" /></svg>
+                          </button>
+                       </div>
+                    </div>
+                    <h4 className="text-lg font-black text-slate-900 tracking-tight mb-1">{cat.name}</h4>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {products.filter(p => p.category === cat.name).length} Associated Products
+                    </p>
+                 </div>
+              ))}
+           </div>
+        </div>
+      )}
+
+      {/* Database Help */}
       {activeTab === 'help' && (
         <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm space-y-12 animate-in zoom-in-95 duration-500">
            <div className="text-center max-w-2xl mx-auto space-y-4">
               <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database & Storage Helper</h2>
-              <p className="text-slate-500 font-medium">ছবি আপলোড বা পোস্ট সেভ করতে সমস্যা হলে নিচের ধাপগুলো অনুসরণ করুন।</p>
+              <p className="text-slate-500 font-medium">নতুন Tab Manager কাজ করার জন্য নিচের SQL কোডটি অবশ্যই রান করতে হবে।</p>
            </div>
            
            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -325,7 +458,7 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category Configuration</label>
                         <select className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black focus:border-blue-600 appearance-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                          {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+                          {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
@@ -333,7 +466,6 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                         <textarea required className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold h-40 focus:border-blue-600 resize-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                       </div>
                       
-                      {/* NEW: Visibility Control */}
                       <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Visibility Status</label>
                         <div className="flex gap-4">
@@ -342,7 +474,7 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                             onClick={() => setFormData({...formData, isPublic: true})}
                             className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${formData.isPublic ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:border-green-200'}`}
                            >
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542 7z" /></svg>
                              Public
                            </button>
                            <button 
@@ -354,9 +486,6 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                              Unpublic
                            </button>
                         </div>
-                        <p className="text-[9px] font-bold text-slate-400 px-2">
-                           {formData.isPublic ? "এটি সরাসরি শপে দেখা যাবে।" : "এটি ড্রাফট হিসেবে থাকবে, শপে দেখা যাবে না।"}
-                        </p>
                       </div>
                     </div>
 
@@ -376,7 +505,6 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 </div>
                                 <p className="font-black text-slate-900 text-sm uppercase">Choose Photo</p>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">From your device</p>
                               </div>
                             )}
                             {uploading && (
@@ -401,7 +529,7 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                        </div>
 
                        <div className="pt-4 flex gap-4">
-                          <button type="submit" disabled={uploading || saving} className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-slate-900 transition-all disabled:bg-slate-300">
+                          <button type="submit" disabled={uploading || saving} className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-slate-900 transition-all">
                             {saving ? 'Processing...' : (editingId ? 'Update Service' : 'Confirm Launch')}
                           </button>
                           <button type="button" onClick={resetForm} className="px-8 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs">Abandon</button>
@@ -446,8 +574,8 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                       </td>
                       <td className="px-10 py-6 text-right">
                          <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEditClick(p)} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-blue-600 transition-all shadow-sm hover:shadow-md"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M18.364 5.364a2.121 2.121 0 013 3L12 18l-4 1 1-4L18.364 5.364z" /></svg></button>
-                            <button onClick={() => { if(confirm('Terminate this service from store?')) onDeleteProduct(p.id); }} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-red-500 transition-all shadow-sm hover:shadow-md"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" /></svg></button>
+                            <button onClick={() => handleEditClick(p)} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-blue-600 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M18.364 5.364a2.121 2.121 0 013 3L12 18l-4 1 1-4L18.364 5.364z" /></svg></button>
+                            <button onClick={() => { if(confirm('Terminate this service?')) onDeleteProduct(p.id); }} className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-red-500 transition-all"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" /></svg></button>
                          </div>
                       </td>
                     </tr>
@@ -497,14 +625,10 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
       {selectedOrder && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl transition-opacity duration-700" onClick={() => setSelectedOrder(null)} />
-          <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-500">
+          <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-500">
              <div className="flex items-center justify-between p-8 border-b border-slate-100 bg-slate-50/50">
                  <div>
                     <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Order Dossier</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 bg-blue-600 text-white rounded text-[8px] font-black uppercase tracking-widest">REF-{selectedOrder.id.slice(0,8)}</span>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Deployment Verified</p>
-                    </div>
                  </div>
                  <button onClick={() => setSelectedOrder(null)} className="w-10 h-10 text-slate-300 hover:text-red-500 transition-all hover:rotate-90"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button>
              </div>
@@ -516,80 +640,41 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
                           <p className="text-lg font-black">{selectedOrder.fullName}</p>
                           <p className="text-xs font-bold text-cyan-400 underline">{selectedOrder.deliveryEmail}</p>
                         </div>
-                        <div className="pt-4 border-t border-white/10">
-                           <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">WhatsApp Comm</p>
-                           <p className="text-sm font-black tracking-widest">{selectedOrder.whatsappNumber}</p>
-                        </div>
                     </div>
                     <div className="p-6 bg-blue-50 rounded-[2rem] border border-blue-100 flex flex-col justify-between">
                         <div className="space-y-1">
                           <p className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em]">Financial Summary</p>
                           <p className="text-3xl font-black text-blue-600">${selectedOrder.total.toFixed(2)}</p>
-                          <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{selectedOrder.paymentMethod}</p>
-                        </div>
-                        <div className="pt-2">
-                           <p className="text-[8px] font-black text-blue-300 uppercase tracking-[0.2em] mb-0.5">Transaction Reference</p>
-                           <p className="text-[10px] font-black text-blue-900 truncate tracking-widest">{selectedOrder.transactionId}</p>
                         </div>
                     </div>
                 </div>
                 <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-inner">
                     <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between">
                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Provisioning Manifest</span>
-                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{selectedOrder.items.length} Units</span>
                     </div>
                     <div className="max-h-32 overflow-y-auto p-4 space-y-2">
                         {selectedOrder.items.map((item, i) => (
-                            <div key={i} className="flex justify-between items-center text-xs">
-                               <div className="flex gap-2 items-center">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-                                 <span className="font-black text-slate-900 uppercase tracking-tight">{item.name}</span>
-                               </div>
-                               <span className="font-black text-slate-400">x{item.quantity}</span>
+                            <div key={i} className="flex justify-between items-center text-xs font-black">
+                               <span className="text-slate-900 uppercase tracking-tight">{item.name}</span>
+                               <span className="text-slate-400">x{item.quantity}</span>
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="relative group/proof">
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Verification Proof Attachment</p>
-                   <div className="h-64 rounded-[2.5rem] border border-slate-200 overflow-hidden bg-slate-50 group-hover/proof:border-blue-400 transition-all duration-500">
-                      {selectedOrder.screenshotUrl ? (
-                          <img src={selectedOrder.screenshotUrl} className="w-full h-full object-contain cursor-zoom-in" onClick={() => window.open(selectedOrder.screenshotUrl, '_blank')} />
-                      ) : (
-                          <div className="h-full flex items-center justify-center text-slate-200 text-[10px] font-black uppercase tracking-widest">Missing Visual Proof</div>
-                      )}
+                {selectedOrder.screenshotUrl && (
+                   <div className="h-64 rounded-[2.5rem] border border-slate-200 overflow-hidden bg-slate-50">
+                      <img src={selectedOrder.screenshotUrl} className="w-full h-full object-contain cursor-zoom-in" onClick={() => window.open(selectedOrder.screenshotUrl, '_blank')} />
                    </div>
-                </div>
+                )}
              </div>
              <div className="p-8 bg-slate-50/50 border-t border-slate-100">
                 <div className="flex flex-wrap gap-3">
                     {selectedOrder.status === 'pending' && (
                         <>
                             <button onClick={() => { onUpdateOrderStatus(selectedOrder.id, 'confirmed'); setSelectedOrder(null); }} className="flex-1 py-4 bg-green-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-green-700 transition-all shadow-xl shadow-green-100 flex items-center justify-center gap-3">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                                 Authorize Order
                             </button>
-                            <button onClick={() => { onUpdateOrderStatus(selectedOrder.id, 'cancelled'); setSelectedOrder(null); }} className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-amber-600 transition-all shadow-xl shadow-amber-100 flex items-center justify-center gap-3">
-                                Decline Case
-                            </button>
                         </>
-                    )}
-                    {selectedOrder.status === 'confirmed' && (
-                        <button onClick={() => { onUpdateOrderStatus(selectedOrder.id, 'delivered'); setSelectedOrder(null); }} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 animate-pulse">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                            Complete Delivery
-                        </button>
-                    )}
-                    {selectedOrder.status === 'delivered' && (
-                        <div className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 cursor-default">
-                             <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-                             Fulfilled
-                        </div>
-                    )}
-                    {onDeleteOrder && (
-                        <button onClick={() => { if(confirm('Permanently purge this record?')) { onDeleteOrder(selectedOrder.id); setSelectedOrder(null); } }} className="px-6 py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all">
-                          Purge
-                        </button>
                     )}
                     <button onClick={() => setSelectedOrder(null)} className="px-6 py-4 bg-white border border-slate-200 text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 hover:text-white transition-all">Dismiss</button>
                 </div>

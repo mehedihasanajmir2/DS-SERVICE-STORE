@@ -1,7 +1,7 @@
 
 import { Product } from './types';
 
-export const CATEGORIES = ['All', 'New Apple Account', 'Old Apple Account', 'All Type Icloud', 'All Type Virtual Card', 'All Type Gmail Id', 'All Type Facebook Id'];
+export const CATEGORIES = ['All', 'Apple (New)', 'Apple (Old)', 'iCloud', 'Virtual Card', 'Gmail ID', 'Facebook ID'];
 
 export const INITIAL_PRODUCTS: Product[] = [
   {
@@ -9,7 +9,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'New 1 Apple id',
     description: 'Freshly created, not verified Apple ID. Secure and ready for immediate use across all your Apple devices.',
     price: 0,
-    category: 'New Apple Account',
+    category: 'Apple (New)',
     image: 'https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj',
     stock: 0,
     rating: 4.9,
@@ -20,7 +20,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: '1 year 1 Apple id',
     description: 'Not verified Apple ID with 1-year history. Perfect for developers and legacy app compatibility.',
     price: 0,
-    category: 'Old Apple Account',
+    category: 'Apple (Old)',
     image: 'https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj',
     stock: 0,
     rating: 4.7,
@@ -31,7 +31,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'New 1 pis iCloud',
     description: 'Premium not verified iCloud accounts for professional and personal use. High quality guaranteed.',
     price: 0.30,
-    category: 'All Type Icloud',
+    category: 'iCloud',
     image: 'https://www.blueapplesystems.co.uk/uploads/6/0/2/7/60276537/icloud_orig.png',
     stock: 100,
     rating: 4.9,
@@ -42,7 +42,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Old 1 pis iCloud',
     description: 'Premium not verified iCloud accounts for professional and personal use. High quality guaranteed.',
     price: 0,
-    category: 'All Type Icloud',
+    category: 'iCloud',
     image: 'https://www.blueapplesystems.co.uk/uploads/6/0/2/7/60276537/icloud_orig.png',
     stock: 0,
     rating: 4.9,
@@ -53,7 +53,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: '1 Pis visa card for apple id',
     description: 'Premium virtual Visa cards specifically optimized for Apple ID verification and global digital payments.',
     price: 0,
-    category: 'All Type Virtual Card',
+    category: 'Virtual Card',
     image: 'https://media.gettyimages.com/id/79989029/photo/visa-plans-largest-ipo-in-u-s-history.jpg?s=594x594&w=gi&k=20&c=OqVn902U2U7PNJKpVohns7W3YR6dgNHjbhIR5ATc5BY=',
     stock: 0,
     rating: 4.8,
@@ -64,7 +64,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'New Fresh Gmail ID',
     description: 'All Gmail create only android and PC create Gmail',
     price: 0,
-    category: 'All Type Gmail Id',
+    category: 'Gmail ID',
     image: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
     stock: 0,
     rating: 4.8,
@@ -75,7 +75,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Old Fresh Gmail ID',
     description: 'All Gmail create only android and PC create Gmail',
     price: 0,
-    category: 'All Type Gmail Id',
+    category: 'Gmail ID',
     image: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
     stock: 0,
     rating: 4.8,
@@ -86,7 +86,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: 'Fresh Facebook ID',
     description: 'New and fresh Facebook accounts for marketing, business activities, or personal use. High quality and secure.',
     price: 0,
-    category: 'All Type Facebook Id',
+    category: 'Facebook ID',
     image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg',
     stock: 0,
     rating: 4.7,
