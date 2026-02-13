@@ -8,48 +8,61 @@ interface HeroBannerProps {
 export const HeroBanner: React.FC<HeroBannerProps> = ({ onShopClick }) => {
   return (
     <div className="relative w-full px-4 sm:px-6 lg:px-8 mb-8 animate-in fade-in slide-in-from-top-4 duration-1000">
-      <div className="relative overflow-hidden rounded-[2.5rem] md:rounded-[4rem] bg-[#0A0F1E] aspect-[16/9] md:aspect-[3.5/1] flex items-center shadow-2xl border border-white/5">
-        {/* Background Image - Earth from Space Theme */}
+      <div className="relative overflow-hidden rounded-[3rem] md:rounded-[4.5rem] bg-[#050A18] min-h-[350px] md:min-h-[480px] flex items-center shadow-2xl border border-white/5">
+        
+        {/* Deep Space / Earth Background */}
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2000" 
-            alt="Digital Space Background" 
-            className="w-full h-full object-cover opacity-50"
+            alt="Global Digital Infrastructure" 
+            className="w-full h-full object-cover opacity-60"
           />
-          {/* Darkness Overlay to match screenshot depth */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A0F1E] via-[#0A0F1E]/60 to-transparent"></div>
+          {/* Subtle gradient overlay to enhance text readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050A18] via-[#050A18]/70 to-transparent"></div>
         </div>
 
-        {/* Floating Product Rain (Decorative elements from the screenshot) */}
-        <div className="absolute inset-0 pointer-events-none opacity-20 overflow-hidden">
-            <div className="absolute top-10 left-[10%] w-12 h-12 bg-white/10 rounded-xl rotate-12 blur-sm"></div>
-            <div className="absolute bottom-10 right-[20%] w-16 h-16 bg-white/10 rounded-2xl -rotate-45 blur-md"></div>
-        </div>
-
-        {/* Content Section */}
-        <div className="relative z-10 px-10 md:px-24 max-w-5xl">
-          <div className="flex flex-col gap-4">
-            <h1 className="text-3xl md:text-7xl font-black tracking-tighter text-white flex flex-wrap items-center gap-x-4 md:gap-x-6">
-              DS <span className="text-[#22D3EE] drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">SERVICE STORE</span>
+        {/* Content Section aligned like the image */}
+        <div className="relative z-10 px-8 md:px-24 py-16 flex flex-col items-start gap-4 md:gap-6 w-full max-w-full">
+          
+          {/* Main Logo Text Area - Sized smaller as requested and forced to single line */}
+          <div className="w-full overflow-visible">
+            <h1 className="text-xl sm:text-3xl md:text-[3.5rem] lg:text-[4.5rem] font-black tracking-tighter leading-none text-white whitespace-nowrap flex items-center">
+              <span>DS</span>
+              <span className="text-[#22D3EE] ml-2 md:ml-4 drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                SERVICE STORE
+              </span>
             </h1>
-            
-            <p className="text-[9px] md:text-sm font-black text-slate-300 uppercase tracking-[0.25em] md:tracking-[0.4em] mb-4 md:mb-8 opacity-90 max-w-2xl">
+          </div>
+
+          {/* Subtitle list of services */}
+          <div className="max-w-3xl">
+            <p className="text-[10px] md:text-base font-black text-slate-200 uppercase tracking-[0.2em] md:tracking-[0.3em] opacity-90 leading-relaxed">
               BUY NOW APPLE ID, ICLOUD ID, GMAIL, FACEBOOK, VIRTUAL VISA CARDS
             </p>
-
-            <div>
-                <button 
-                  onClick={onShopClick}
-                  className="bg-white text-slate-950 px-8 md:px-14 py-3.5 md:py-5 rounded-2xl md:rounded-3xl font-black text-[10px] md:text-sm uppercase tracking-widest hover:bg-[#22D3EE] hover:text-white transition-all shadow-2xl active:scale-95 group flex items-center gap-3"
-                >
-                  Shop Now
-                  <svg className="w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                  </svg>
-                </button>
-            </div>
           </div>
+
+          {/* Styled Button matching the image */}
+          <div className="mt-6 md:mt-10">
+            <button 
+              onClick={onShopClick}
+              className="bg-white text-[#050A18] px-10 md:px-14 py-4 md:py-6 rounded-full font-black text-xs md:text-base uppercase tracking-[0.1em] hover:bg-[#22D3EE] hover:text-white transition-all shadow-2xl active:scale-95 group flex items-center gap-4"
+            >
+              SHOP NOW
+              <svg 
+                className="w-5 h-5 md:w-6 md:h-6 transition-transform group-hover:translate-x-2" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </button>
+          </div>
+
         </div>
+
+        {/* Decorative Light Glows */}
+        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#22D3EE]/10 blur-[100px] rounded-full"></div>
       </div>
     </div>
   );

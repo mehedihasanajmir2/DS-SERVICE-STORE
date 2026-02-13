@@ -27,40 +27,37 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Use the horizontal logo image
+  const logoUrl = "https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj"; 
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* LEFT SIDE: LOGO + NAVIGATION */}
-          <div className="flex items-center gap-8 md:gap-12">
-            <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('shop')}>
-              <div className="relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12">
-                <div className="absolute inset-0 border-2 border-cyan-400 rounded-full border-t-transparent animate-[spin_3s_linear_infinite]"></div>
-                <div className="absolute inset-1 border border-blue-500 rounded-full border-b-transparent animate-[spin_2s_linear_infinite_reverse]"></div>
-                <div className="flex items-baseline relative z-10 font-black text-sm md:text-lg">
-                  <span className="text-blue-600 drop-shadow-sm">D</span>
-                  <span className="text-green-500 -ml-1 drop-shadow-sm">S</span>
-                </div>
-              </div>
-              <div className="hidden sm:flex flex-col">
-                <span className="text-base md:text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-                  DS <span className="font-medium text-slate-600">STORE</span>
-                </span>
-              </div>
+          {/* LEFT SIDE: BRAND LOGO IMAGE ONLY */}
+          <div className="flex items-center gap-4">
+            <div 
+              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity" 
+              onClick={() => setView('shop')}
+            >
+              <img 
+                src={logoUrl} 
+                alt="DS SERVICE STORE" 
+                className="h-10 md:h-12 w-auto object-contain"
+              />
             </div>
 
             {/* NAV LINKS */}
-            <div className="flex items-center gap-4 md:gap-8">
+            <div className="hidden md:flex items-center gap-8 ml-6">
               <button 
                 onClick={onServicesClick}
-                className="text-[10px] md:text-xs font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors"
+                className="text-xs font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors"
               >
                 Services
               </button>
               <button 
                 onClick={() => setView('contact')}
-                className={`text-[10px] md:text-xs font-black uppercase tracking-widest transition-colors ${currentView === 'contact' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}
+                className={`text-xs font-black uppercase tracking-widest transition-colors ${currentView === 'contact' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}
               >
                 Contact
               </button>
@@ -84,30 +81,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </button>
 
-                {/* NOTIFICATION DROPDOWN */}
                 {isNotifOpen && (
                   <div className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
                     <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                       <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Notifications</span>
-                      {unreadCount > 0 && <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">New</span>}
                     </div>
                     <div className="max-h-[350px] overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-10 text-center">
-                          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No notifications yet</p>
-                        </div>
+                        <div className="p-10 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">No notifications</div>
                       ) : (
                         notifications.map(n => (
                           <div key={n.id} className={`p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.isRead ? 'bg-blue-50/30' : ''}`}>
-                            <div className="flex gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${n.type === 'order_status' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-[11px] font-bold text-slate-900 leading-relaxed">{n.message}</p>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">{new Date(n.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                              </div>
-                            </div>
+                            <p className="text-[11px] font-bold text-slate-900 leading-relaxed">{n.message}</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mt-1">{new Date(n.createdAt).toLocaleTimeString()}</p>
                           </div>
                         ))
                       )}

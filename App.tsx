@@ -13,7 +13,7 @@ import { ProfileView } from './components/ProfileView';
 import { HeroBanner } from './components/HeroBanner';
 import { ContactView } from './components/ContactView';
 import { Product, CartItem, User, View, Order, Category, Notification } from './types';
-import { INITIAL_PRODUCTS } from './constants';
+import { INITIAL_PRODUCTS, CATEGORIES } from './constants';
 import { supabase } from './supabaseClient';
 
 const App: React.FC = () => {
@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   
   const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo"; 
+  const logoUrl = "https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj";
 
   const fetchData = async () => {
     try {
@@ -240,8 +241,13 @@ const App: React.FC = () => {
     await fetchData();
   };
 
+  // Improved dynamicCategories to always have data even if DB is empty
   const dynamicCategories = useMemo(() => {
-    return ['All', ...categories.map(c => c.name)];
+    const dbCategoryNames = categories.map(c => c.name);
+    if (dbCategoryNames.length === 0) {
+      return CATEGORIES; // Use defaults from constants.ts if DB is empty
+    }
+    return ['All', ...dbCategoryNames];
   }, [categories]);
 
   const filteredProducts = useMemo(() => {
@@ -328,31 +334,39 @@ const App: React.FC = () => {
           <div className="space-y-4 md:space-y-6">
             <HeroBanner onShopClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} />
 
-            <div ref={shopSectionRef} className="bg-white border border-slate-200 rounded-2xl md:rounded-[2rem] p-1 shadow-sm flex flex-col md:flex-row items-center gap-1 md:gap-4 sticky top-24 z-30">
-                <div className="flex flex-wrap items-center gap-1 w-full md:flex-1 p-1">
+            {/* CATEGORY TAB BAR - Improved for visibility */}
+            <div ref={shopSectionRef} className="bg-white border border-slate-200 rounded-2xl md:rounded-[2.5rem] p-1.5 shadow-xl flex flex-col md:flex-row items-center gap-2 md:gap-4 sticky top-24 z-40 transition-all">
+                <div className="flex flex-nowrap overflow-x-auto items-center gap-1 w-full md:flex-1 p-1 scrollbar-hide">
                     {dynamicCategories.map(cat => (
                         <button 
                             key={cat} 
                             onClick={() => setSelectedCategory(cat)} 
-                            className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tight md:tracking-widest transition-all whitespace-nowrap
-                                ${selectedCategory === cat ? 'bg-[#0F172A] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                            className={`px-4 py-2.5 md:px-6 md:py-3 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap
+                                ${selectedCategory === cat 
+                                  ? 'bg-[#0F172A] text-white shadow-[0_10px_20px_-5px_rgba(15,23,42,0.3)] scale-[1.02]' 
+                                  : 'text-slate-400 hover:bg-slate-100 hover:text-slate-900'}`}
                         >
                             {cat}
                         </button>
                     ))}
                 </div>
-                <div className="w-full md:w-auto p-1 md:pr-2">
-                    <input 
-                      type="text" 
-                      placeholder="Search..." 
-                      className="w-full md:w-40 px-4 py-1.5 md:py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none text-[10px] md:text-xs font-bold focus:bg-white focus:border-blue-600 transition-all" 
-                      value={searchQuery} 
-                      onChange={e => setSearchQuery(e.target.value)} 
-                    />
+                <div className="w-full md:w-auto p-1 md:pr-3 flex items-center">
+                    <div className="relative w-full">
+                      <input 
+                        type="text" 
+                        placeholder="Search services..." 
+                        className="w-full md:w-56 pl-10 pr-4 py-2.5 md:py-3 bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl outline-none text-[10px] md:text-xs font-bold focus:bg-white focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all" 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                      />
+                      <svg className="w-4 h-4 text-slate-300 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
                 </div>
             </div>
 
-            <div className="pb-24">
+            <div className="pb-24 mt-8">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 px-1 md:px-2 animate-in fade-in duration-1000">
                   {filteredProducts.map(product => (
                     <ProductCard key={product.id} product={product} onAddToCart={(p) => {
@@ -366,6 +380,14 @@ const App: React.FC = () => {
                     }} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
                   ))}
                 </div>
+                {filteredProducts.length === 0 && (
+                  <div className="py-20 text-center flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-300">
+                      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No services found in this category</p>
+                  </div>
+                )}
             </div>
           </div>
         ) : currentView === 'product-detail' && selectedProduct ? (
@@ -389,7 +411,7 @@ const App: React.FC = () => {
               whatsapp_number: order.whatsappNumber,
               delivery_email: order.deliveryEmail,
               payment_method: order.paymentMethod,
-              transaction_id: order.transactionId,
+              transaction_id: order.transaction_id,
               screenshot_url: order.screenshotUrl
             }]).select();
             if (!error) {
@@ -470,12 +492,14 @@ const App: React.FC = () => {
       {currentView !== 'admin' && (
         <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
           <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="flex items-center gap-4">
-              <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
-                <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
-                <div className="flex items-baseline relative z-10 font-black text-sm"><span className="text-blue-600">D</span><span className="text-green-500 -ml-0.5">S</span></div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 cursor-pointer group" onClick={() => resetToShop()}>
+                <img src={logoUrl} alt="DS Logo" className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105" />
+                <span className="text-sm md:text-base font-black text-slate-900 uppercase tracking-tighter">
+                  DS <span className="text-slate-500">SERVICE STORE</span>
+                </span>
               </div>
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-start border-l border-slate-100 pl-6">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
                 <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>Mehedi Hasan • DS STORE GLOBAL</p>
               </div>
