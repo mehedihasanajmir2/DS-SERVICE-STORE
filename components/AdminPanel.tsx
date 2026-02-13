@@ -42,7 +42,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     category: CATEGORIES[1],
     image: '',
     stock: 10,
-    rating: 5
+    rating: 5,
+    isPublic: true
   });
 
   const totalSales = orders.reduce((sum, o) => (o.status === 'confirmed' || o.status === 'delivered') ? sum + o.total : sum, 0);
@@ -54,16 +55,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setUploading(true);
       if (!e.target.files || e.target.files.length === 0) return;
       const file = e.target.files[0];
-      const filePath = `product-images/${Math.random()}.${file.name.split('.').pop()}`;
-      const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
-      if (uploadError) throw uploadError;
+      
+      const localUrl = URL.createObjectURL(file);
+      setFormData(prev => ({ ...prev, image: localUrl }));
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `product-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          throw new Error("Supabase-এ 'products' নামে কোনো Storage Bucket পাওয়া যায়নি। দয়া করে Help ট্যাব দেখুন।");
+        }
+        throw uploadError;
+      }
+
       const { data } = supabase.storage.from('products').getPublicUrl(filePath);
+      
       if (data) {
-        setFormData({ ...formData, image: data.publicUrl });
-        alert("✅ Image uploaded!");
+        setFormData(prev => ({ ...prev, image: data.publicUrl }));
+        alert("✅ Image Uploaded Successfully!");
       }
     } catch (error: any) {
-      alert("Error: " + error.message);
+      console.error("Upload Error:", error);
+      alert("❌ Upload Failed: " + error.message);
     } finally {
       setUploading(false);
     }
@@ -78,7 +97,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       category: product.category,
       image: product.image,
       stock: product.stock,
-      rating: product.rating
+      rating: product.rating,
+      isPublic: product.isPublic !== undefined ? product.isPublic : true
     });
     setIsFormOpen(true);
     setActiveTab('inventory');
@@ -105,10 +125,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const resetForm = () => {
     setIsFormOpen(false);
     setEditingId(null);
-    setFormData({ name: '', description: '', price: 0, category: CATEGORIES[1], image: '', stock: 10, rating: 5 });
+    setFormData({ name: '', description: '', price: 0, category: CATEGORIES[1], image: '', stock: 10, rating: 5, isPublic: true });
   };
 
-  const sqlCode = `-- RUN THIS IN SUPABASE SQL EDITOR TO SETUP TABLES
+  const sqlCode = `-- ১. SQL EDITOR-এ গিয়ে এই কোডটি রান করুন:
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
+
 CREATE TABLE IF NOT EXISTS products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -118,12 +140,13 @@ CREATE TABLE IF NOT EXISTS products (
   image text,
   stock integer DEFAULT 10,
   rating numeric DEFAULT 5,
+  is_public boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read" ON products FOR SELECT USING (true);
-CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For production use proper auth!
+CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
 `;
 
   return (
@@ -198,39 +221,33 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For pr
       </div>
 
       {activeTab === 'help' && (
-        <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm space-y-8 animate-in zoom-in-95 duration-500">
+        <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm space-y-12 animate-in zoom-in-95 duration-500">
            <div className="text-center max-w-2xl mx-auto space-y-4">
-              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database Setup Helper</h2>
-              <p className="text-slate-500 font-medium">যদি আপনি পোস্ট সেভ করতে না পারেন, তবে নিচের SQL কোডটি কপি করে আপনার Supabase SQL Editor-এ রান করুন। এটি সঠিক টেবিল তৈরি করে দিবে।</p>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database & Storage Helper</h2>
+              <p className="text-slate-500 font-medium">ছবি আপলোড বা পোস্ট সেভ করতে সমস্যা হলে নিচের ধাপগুলো অনুসরণ করুন।</p>
            </div>
            
-           <div className="relative group">
-              <div className="absolute inset-0 bg-blue-600/5 blur-xl rounded-[2rem] -z-10 group-hover:bg-blue-600/10 transition-all"></div>
-              <pre className="bg-slate-900 text-cyan-400 p-8 rounded-[2rem] font-mono text-sm overflow-x-auto border border-white/10 shadow-2xl relative">
-                  <button 
-                    onClick={() => { navigator.clipboard.writeText(sqlCode); alert("SQL Copied!"); }}
-                    className="absolute top-4 right-4 px-4 py-2 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all"
-                  >
-                    Copy SQL
-                  </button>
-                  {sqlCode}
-              </pre>
-           </div>
-           
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { title: '১. লগইন করুন', desc: 'Supabase Dashboard-এ যান' },
-                { title: '২. SQL Editor', desc: 'বাম পাশের মেনু থেকে SQL Editor সিলেক্ট করুন' },
-                { title: '৩. রান করুন', desc: 'উপরের কোডটি পেস্ট করে "Run" বাটন ক্লিক করুন' }
-              ].map((step, i) => (
-                <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4">
-                  <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs flex-shrink-0">{i+1}</span>
-                  <div>
-                    <h4 className="font-black text-slate-900 uppercase text-[11px] tracking-widest">{step.title}</h4>
-                    <p className="text-xs font-bold text-slate-500 mt-1">{step.desc}</p>
-                  </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="space-y-6">
+                <h3 className="text-lg font-black text-slate-900 uppercase">১. ডাটাবেস টেবিল সেটআপ (SQL)</h3>
+                <pre className="bg-slate-900 text-cyan-400 p-6 rounded-2xl font-mono text-xs overflow-x-auto relative">
+                    <button onClick={() => { navigator.clipboard.writeText(sqlCode); alert("SQL Copied!"); }} className="absolute top-4 right-4 text-[9px] bg-white/10 px-2 py-1 rounded">Copy</button>
+                    {sqlCode}
+                </pre>
+              </div>
+              <div className="space-y-6">
+                <h3 className="text-lg font-black text-slate-900 uppercase">২. ফটো আপলোড সেটআপ (Storage)</h3>
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4">
+                   <p className="text-xs font-bold text-blue-700">ডিভাইস থেকে ফটো আপলোড কাজ না করলে Supabase Dashboard-এ নিচের কাজটি করুন:</p>
+                   <ol className="text-xs space-y-3 font-medium text-slate-600">
+                      <li>• Supabase-এর বাম পাশে **Storage** মেনুতে যান।</li>
+                      <li>• **New Bucket** বাটনে ক্লিক করুন।</li>
+                      <li>• বাকেটের নাম দিন: <code className="bg-white px-2 py-0.5 rounded font-black text-blue-600">products</code></li>
+                      <li>• **Public Bucket** অপশনটি অবশ্যই **On** করে দিন।</li>
+                      <li>• এরপর **Save** করুন। এখন আপনি ডিভাইস থেকে ফটো ব্যবহার করতে পারবেন।</li>
+                   </ol>
                 </div>
-              ))}
+              </div>
            </div>
         </div>
       )}
@@ -294,10 +311,12 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For pr
                 {isFormOpen ? 'Exit Editor' : 'Deploy New Service'}
               </button>
            </div>
+
            {isFormOpen && (
               <form onSubmit={handleSubmit} className="bg-white rounded-[3.5rem] border border-slate-200 p-10 shadow-2xl space-y-10 animate-in zoom-in-95 duration-500 overflow-hidden relative">
                  <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-[100px] -mr-32 -mt-32"></div>
                  <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    {/* Left side: Basic Info */}
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Title</label>
@@ -313,8 +332,63 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For pr
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Narrative</label>
                         <textarea required className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold h-40 focus:border-blue-600 resize-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                       </div>
+                      
+                      {/* NEW: Visibility Control */}
+                      <div className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Visibility Status</label>
+                        <div className="flex gap-4">
+                           <button 
+                            type="button" 
+                            onClick={() => setFormData({...formData, isPublic: true})}
+                            className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${formData.isPublic ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:border-green-200'}`}
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                             Public
+                           </button>
+                           <button 
+                            type="button" 
+                            onClick={() => setFormData({...formData, isPublic: false})}
+                            className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${!formData.isPublic ? 'bg-slate-900 border-slate-900 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:border-slate-400'}`}
+                           >
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L4.59 4.59m9.531 9.53l5.29 5.29M21.542 12c-1.274 4.057-5.064 7-9.542 7-1.042 0-2.052-.132-3.016-.381m10.114-10.114A9.957 9.957 0 0121.543 12z" /></svg>
+                             Unpublic
+                           </button>
+                        </div>
+                        <p className="text-[9px] font-bold text-slate-400 px-2">
+                           {formData.isPublic ? "এটি সরাসরি শপে দেখা যাবে।" : "এটি ড্রাফট হিসেবে থাকবে, শপে দেখা যাবে না।"}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Right side: Photo & Price */}
                     <div className="space-y-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Photo (Device Upload)</label>
+                          <div 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="relative aspect-video rounded-[2.5rem] border-4 border-dashed border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-blue-400 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center group"
+                          >
+                            {formData.image ? (
+                              <img src={formData.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                            ) : (
+                              <div className="text-center p-6">
+                                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto mb-4 text-slate-300 group-hover:text-blue-500 transition-colors">
+                                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                </div>
+                                <p className="font-black text-slate-900 text-sm uppercase">Choose Photo</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">From your device</p>
+                              </div>
+                            )}
+                            {uploading && (
+                              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                <p className="text-[10px] font-black text-blue-600 mt-4 uppercase animate-pulse">Uploading to Server...</p>
+                              </div>
+                            )}
+                          </div>
+                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+                       </div>
+
                        <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Valuation ($)</label>
@@ -325,29 +399,25 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For pr
                             <input type="number" className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black text-xl" value={formData.stock} onChange={e => setFormData({...formData, stock: parseInt(e.target.value)})} />
                          </div>
                        </div>
-                       <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Image URL / Upload</label>
-                          <div className="flex gap-4">
-                            <input className="flex-1 px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-xs" value={formData.image} placeholder="https://..." onChange={e => setFormData({...formData, image: e.target.value})} />
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] hover:bg-blue-600 transition-all">{uploading ? '...' : 'Upload'}</button>
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-                          </div>
-                       </div>
+
                        <div className="pt-4 flex gap-4">
-                          <button type="submit" className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-slate-900 transition-all">{saving ? 'Processing...' : (editingId ? 'Update Service' : 'Confirm Launch')}</button>
+                          <button type="submit" disabled={uploading || saving} className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-slate-900 transition-all disabled:bg-slate-300">
+                            {saving ? 'Processing...' : (editingId ? 'Update Service' : 'Confirm Launch')}
+                          </button>
                           <button type="button" onClick={resetForm} className="px-8 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs">Abandon</button>
                        </div>
                     </div>
                  </div>
               </form>
            )}
+
            <div className="bg-white rounded-[3rem] border border-slate-200 overflow-hidden shadow-sm">
               <table className="w-full text-left">
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-10 py-7 text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Item</th>
                     <th className="px-10 py-7 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valuation</th>
-                    <th className="px-10 py-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Stock Level</th>
+                    <th className="px-10 py-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Stock / Visibility</th>
                     <th className="px-10 py-7 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Operational Tools</th>
                   </tr>
                 </thead>
@@ -365,7 +435,14 @@ CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For pr
                       </td>
                       <td className="px-10 py-6"><span className="font-black text-slate-900">${p.price.toFixed(2)}</span></td>
                       <td className="px-10 py-6 text-center">
-                        <span className={`px-4 py-2 rounded-xl text-xs font-black border-2 ${p.stock <= 5 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-slate-100 text-slate-700'}`}>{p.stock}</span>
+                        <div className="flex flex-col items-center gap-2">
+                           <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black border-2 ${p.stock <= 5 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-slate-100 text-slate-700'}`}>
+                             {p.stock} Units
+                           </span>
+                           <span className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest border ${p.isPublic ? 'bg-green-50 text-green-600 border-green-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                              {p.isPublic ? '● Public' : '○ Private'}
+                           </span>
+                        </div>
                       </td>
                       <td className="px-10 py-6 text-right">
                          <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">

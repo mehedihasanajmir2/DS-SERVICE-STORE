@@ -8,6 +8,7 @@ export interface Product {
   image: string;
   stock: number;
   rating: number;
+  isPublic: boolean; // Added for visibility control
 }
 
 export interface CartItem extends Product {
