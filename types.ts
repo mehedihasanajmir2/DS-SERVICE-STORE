@@ -14,7 +14,7 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
-  order_index: number;
+  order_index?: number;
   created_at?: string;
 }
 

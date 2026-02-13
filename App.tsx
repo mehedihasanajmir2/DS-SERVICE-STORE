@@ -51,7 +51,7 @@ const App: React.FC = () => {
       const { data: dbCats, error: catError } = await supabase
         .from('categories')
         .select('*')
-        .order('order_index', { ascending: true });
+        .order('created_at', { ascending: true }); // Changed from order_index to created_at
       
       if (!catError && dbCats) {
         setCategories(dbCats);
@@ -185,8 +185,8 @@ const App: React.FC = () => {
   };
 
   const handleAddCategory = async (name: string) => {
-    const maxIndex = categories.reduce((max, c) => Math.max(max, c.order_index), 0);
-    const { error } = await supabase.from('categories').insert([{ name, order_index: maxIndex + 1 }]);
+    // Removed order_index to fix database column missing error
+    const { error } = await supabase.from('categories').insert([{ name }]);
     if (error) {
       console.error("Supabase AddCategory Error:", error);
       throw error;
