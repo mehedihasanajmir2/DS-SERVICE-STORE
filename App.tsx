@@ -47,17 +47,15 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch Categories
       const { data: dbCats, error: catError } = await supabase
         .from('categories')
         .select('*')
-        .order('name', { ascending: true });
+        .order('order_index', { ascending: true });
       
       if (!catError && dbCats) {
         setCategories(dbCats);
       }
 
-      // Fetch Products
       const { data: dbProducts, error: prodError } = await supabase
         .from('products')
         .select('*')
@@ -71,7 +69,6 @@ const App: React.FC = () => {
         setProducts(mappedProducts.length > 0 ? mappedProducts : INITIAL_PRODUCTS);
       }
 
-      // Fetch Orders
       const { data: dbOrders, error: orderError } = await supabase
         .from('orders')
         .select('*')
@@ -99,18 +96,15 @@ const App: React.FC = () => {
     }
   };
 
-  // REAL-TIME NOTIFICATIONS LOGIC
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       return;
     }
 
-    // Load existing notifications from local storage for persistence
     const stored = localStorage.getItem(`notifs_${user.id}`);
     if (stored) setNotifications(JSON.parse(stored));
 
-    // Subscribe to Orders Table Changes
     const channel = supabase
       .channel('order_updates')
       .on(
@@ -131,10 +125,9 @@ const App: React.FC = () => {
             };
             setNotifications(prev => {
               const updated = [newNotif, ...prev];
-              localStorage.setItem(`notifs_${user.id}`, JSON.stringify(updated.slice(0, 20))); // Keep last 20
+              localStorage.setItem(`notifs_${user.id}`, JSON.stringify(updated.slice(0, 20)));
               return updated;
             });
-            // Show simple toast alert for live feedback
             alert(`🔔 Order Update: Your order is now ${newStatus}!`);
           }
         }
@@ -166,7 +159,8 @@ const App: React.FC = () => {
             id: session.user.id,
             name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'User',
             email: session.user.email || '',
-            isAdmin: false
+            isAdmin: false,
+            photoUrl: session.user.user_metadata.avatar_url
           });
         }
         await fetchData();
@@ -190,7 +184,8 @@ const App: React.FC = () => {
   };
 
   const handleAddCategory = async (name: string) => {
-    const { error } = await supabase.from('categories').insert([{ name }]);
+    const maxIndex = categories.reduce((max, c) => Math.max(max, c.order_index), 0);
+    const { error } = await supabase.from('categories').insert([{ name, order_index: maxIndex + 1 }]);
     if (error) throw error;
     await fetchData();
   };
@@ -412,7 +407,13 @@ const App: React.FC = () => {
             }
           }} />
         ) : currentView === 'profile' && user ? (
-          <ProfileView user={user} orders={orders} onBack={resetToShop} onUpdatePassword={() => { setAuthMode('update'); setIsAuthModalOpen(true); }} />
+          <ProfileView 
+            user={user} 
+            orders={orders} 
+            onBack={resetToShop} 
+            onUpdatePassword={() => { setAuthMode('update'); setIsAuthModalOpen(true); }}
+            onUpdateUser={(updatedUser) => setUser({...user, ...updatedUser})}
+          />
         ) : currentView === 'admin' && isAdminAuthenticated ? (
           <AdminPanel 
             products={products} 
@@ -434,7 +435,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Admin Pass Modal */}
       {showAdminPassModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#0F172A]/80 backdrop-blur-3xl transition-all duration-700 animate-in fade-in">
           <div className="relative bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-500 w-full max-w-[440px] flex flex-col items-center">
@@ -485,7 +485,15 @@ const App: React.FC = () => {
         </footer>
       )}
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, q) => setCart(cart.map(i => i.id === id ? {...i, quantity: q} : i))} onCheckout={() => { setIsCartOpen(false); setCurrentView('checkout'); }} />
+      <CartDrawer 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        items={cart} 
+        orders={orders.filter(o => o.userId === user?.id)}
+        onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
+        onUpdateQuantity={(id, q) => setCart(cart.map(i => i.id === id ? {...i, quantity: q} : i))} 
+        onCheckout={() => { setIsCartOpen(false); setCurrentView('checkout'); }} 
+      />
       <AuthModal isOpen={isAuthModalOpen} initialMode={authMode} onClose={() => setIsAuthModalOpen(false)} onLogin={(u) => setUser(u)} />
     </div>
   );

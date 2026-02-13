@@ -138,11 +138,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <button onClick={onLogout} className="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase tracking-tighter">Sign Out</button>
                 </div>
                 <div 
-                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-green-400 p-[2px] cursor-pointer hover:scale-105 transition-transform"
+                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-green-400 p-[2px] cursor-pointer hover:scale-105 transition-transform overflow-hidden"
                   onClick={() => setView('profile')}
                 >
-                    <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center text-xs font-black text-blue-600">
-                        {user.name.charAt(0)}
+                    <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center text-xs font-black text-blue-600 overflow-hidden">
+                        {user.photoUrl ? (
+                          <img src={user.photoUrl} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.charAt(0)
+                        )}
                     </div>
                 </div>
               </div>

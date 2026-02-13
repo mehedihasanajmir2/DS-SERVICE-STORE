@@ -14,6 +14,7 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
+  order_index: number;
   created_at?: string;
 }
 
@@ -26,6 +27,7 @@ export interface User {
   name: string;
   email: string;
   isAdmin: boolean;
+  photoUrl?: string;
 }
 
 export interface Order {

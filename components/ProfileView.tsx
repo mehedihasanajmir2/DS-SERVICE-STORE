@@ -1,16 +1,20 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { User, Order, CartItem } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface ProfileViewProps {
   user: User;
   orders: Order[];
   onUpdatePassword: () => void;
+  onUpdateUser: (updatedUser: Partial<User>) => void;
   onBack: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdatePassword, onBack }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdatePassword, onUpdateUser, onBack }) => {
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const userOrders = useMemo(() => {
     return orders.filter(o => o.userId === user.id);
@@ -29,6 +33,48 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
       pendingOrders
     };
   }, [userOrders]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      const file = e.target.files[0];
+      setUploading(true);
+
+      // 1. Upload file to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      const filePath = `profile-photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('products') // Reusing existing bucket
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data: urlData } = supabase.storage
+        .from('products')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData.publicUrl;
+
+      // 3. Update User Metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+
+      if (updateError) throw updateError;
+
+      // 4. Notify App state
+      onUpdateUser({ photoUrl: publicUrl });
+      alert("✅ Profile photo updated successfully!");
+
+    } catch (error: any) {
+      alert("❌ Upload Failed: " + (error.message || "Unknown error"));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto space-y-8">
@@ -51,13 +97,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, orders, onUpdate
           <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
             <div className="h-24 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
             <div className="px-8 pb-8 -mt-12 text-center">
-              <div className="inline-block relative">
-                <div className="absolute inset-0 bg-white rounded-[2.5rem] scale-110 shadow-lg"></div>
-                <div className="relative w-24 h-24 bg-gradient-to-br from-blue-500 to-green-400 rounded-[2.2rem] p-[3px] z-10">
-                  <div className="w-full h-full bg-white rounded-[1.8rem] flex items-center justify-center text-3xl font-black text-blue-600">
-                    {user.name.charAt(0)}
+              <div className="inline-block relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div className="absolute inset-0 bg-white rounded-[2.5rem] scale-110 shadow-lg group-hover:bg-blue-50 transition-colors"></div>
+                <div className="relative w-24 h-24 bg-gradient-to-br from-blue-500 to-green-400 rounded-[2.2rem] p-[3px] z-10 overflow-hidden">
+                  <div className="w-full h-full bg-white rounded-[1.8rem] flex items-center justify-center text-3xl font-black text-blue-600 overflow-hidden relative">
+                    {user.photoUrl ? (
+                      <img src={user.photoUrl} alt={user.name} className="w-full h-full object-cover" />
+                    ) : (
+                      user.name.charAt(0)
+                    )}
+                    
+                    {/* Upload Overlay */}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+
+                    {uploading && (
+                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-20">
+                        <div className="w-6 h-6 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
                   </div>
                 </div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handlePhotoUpload} 
+                />
               </div>
               
               <h2 className="text-2xl font-black text-slate-900 mt-6 tracking-tight">{user.name}</h2>
