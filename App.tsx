@@ -187,7 +187,10 @@ const App: React.FC = () => {
   const handleAddCategory = async (name: string) => {
     const maxIndex = categories.reduce((max, c) => Math.max(max, c.order_index), 0);
     const { error } = await supabase.from('categories').insert([{ name, order_index: maxIndex + 1 }]);
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase AddCategory Error:", error);
+      throw error;
+    }
     await fetchData();
   };
 
@@ -214,7 +217,7 @@ const App: React.FC = () => {
       rating: p.rating,
       is_public: p.isPublic
     }]);
-    if (error) return;
+    if (error) throw error;
     await fetchData();
   };
 
@@ -225,19 +228,19 @@ const App: React.FC = () => {
       delete updateData.isPublic;
     }
     const { error } = await supabase.from('products').update(updateData).eq('id', id);
-    if (error) return;
+    if (error) throw error;
     await fetchData();
   };
 
   const handleDeleteProduct = async (id: string) => {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) return;
+    if (error) throw error;
     await fetchData();
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
-    if (error) return;
+    if (error) throw error;
     await fetchData();
   };
 
@@ -470,7 +473,7 @@ const App: React.FC = () => {
             </div>
             <div className="text-center mb-10">
                 <h3 className="text-3xl font-black text-[#0F172A] uppercase tracking-tighter">Mehedi Hasan</h3>
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] whitespace-nowrap">Security Terminal</h2>
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] whitespace-nowrap">DS Control Center</h2>
             </div>
             <form className="w-full space-y-8" onSubmit={(e) => { 
                 e.preventDefault(); 

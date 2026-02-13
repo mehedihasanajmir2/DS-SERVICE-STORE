@@ -85,7 +85,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       alert("✅ Default tabs have been synced to the database!");
     } catch (e: any) {
-      alert("❌ Import failed: " + (e.message || "Connection error"));
+      alert("❌ Sync failed: " + (e.message || "Connection error"));
     } finally {
       setSaving(false);
     }
@@ -133,27 +133,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       resetForm();
       alert("✅ Product saved!");
     } catch (e: any) {
-      alert("❌ Failed to save product.");
+      alert("❌ Product action failed: " + (e.message || "Database connection error"));
     } finally { setSaving(false); }
   };
 
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryName.trim()) return;
+    const trimmedName = categoryName.trim();
+    if (!trimmedName) return;
     setSaving(true);
     try {
       if (editingCategoryId) { 
-        await onUpdateCategory(editingCategoryId, categoryName.trim()); 
+        await onUpdateCategory(editingCategoryId, trimmedName); 
         alert("✅ Tab updated!");
       } else { 
-        await onAddCategory(categoryName.trim()); 
+        await onAddCategory(trimmedName); 
         alert("✅ New Tab added successfully!");
       }
       setCategoryName('');
       setEditingCategoryId(null);
       setIsCategoryFormOpen(false);
     } catch (e: any) {
-      alert("❌ Tab action failed.");
+      // Changed from hardcoded string to dynamic error message for debugging
+      alert("❌ Tab action failed: " + (e.message || "Check your database connection or permissions"));
     } finally {
       setSaving(false);
     }
@@ -189,8 +191,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <img src={ownerPhotoUrl} alt="Admin" className="w-full h-full object-cover" />
             </div>
             <div>
-              <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter">Control Center</h1>
-              <p className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] mt-2">Master Administrator: Mehedi Hasan</p>
+              <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter">Mehedi Hasan</h1>
+              <p className="text-xs font-black text-blue-400 uppercase tracking-[0.3em] mt-2">DS Control Center</p>
             </div>
           </div>
           <button onClick={onBack} className="px-10 py-4 bg-white/5 hover:bg-red-500/20 text-white border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl backdrop-blur-md">
@@ -239,7 +241,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* TAB MANAGER TAB (REDESIGNED TO TABLE) */}
+      {/* TAB MANAGER TAB */}
       {activeTab === 'tabs' && (
         <div className="space-y-8 animate-in slide-in-from-bottom-4">
            <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-6 rounded-[2rem] border border-slate-100 gap-6 shadow-sm">
@@ -266,7 +268,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                      autoFocus
                    />
                    <div className="flex gap-4">
-                      <button type="submit" disabled={saving} className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-slate-900 transition-all">Confirm Change</button>
+                      <button type="submit" disabled={saving} className="flex-1 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-slate-900 transition-all">
+                        {saving ? 'Processing...' : 'Confirm Change'}
+                      </button>
                       <button type="button" onClick={() => setIsCategoryFormOpen(false)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs hover:bg-red-50 hover:text-red-500 transition-all">Cancel</button>
                    </div>
                 </form>
@@ -317,7 +321,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      {/* OTHER TABS (DASHBOARD, INVENTORY, ORDERS) REMAINS HERE... */}
+      {/* DASHBOARD TAB */}
       {activeTab === 'dashboard' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4">
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100">
