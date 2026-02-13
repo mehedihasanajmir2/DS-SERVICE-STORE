@@ -11,7 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { ProductRain } from './components/ProductRain';
 import { ProfileView } from './components/ProfileView';
 import { HeroBanner } from './components/HeroBanner';
-import { Product, CartItem, User, View, Order, Category } from './types';
+import { Product, CartItem, User, View, Order, Category, Notification } from './types';
 import { INITIAL_PRODUCTS } from './constants';
 import { supabase } from './supabaseClient';
 
@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentView, setCurrentView] = useState<View>('shop');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -67,8 +68,6 @@ const App: React.FC = () => {
           isPublic: p.is_public !== undefined ? p.is_public : true
         }));
         setProducts(mappedProducts.length > 0 ? mappedProducts : INITIAL_PRODUCTS);
-      } else {
-        setProducts(INITIAL_PRODUCTS);
       }
 
       // Fetch Orders
@@ -98,6 +97,53 @@ const App: React.FC = () => {
       console.error("General Fetch Error:", err);
     }
   };
+
+  // REAL-TIME NOTIFICATIONS LOGIC
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    // Load existing notifications from local storage for persistence
+    const stored = localStorage.getItem(`notifs_${user.id}`);
+    if (stored) setNotifications(JSON.parse(stored));
+
+    // Subscribe to Orders Table Changes
+    const channel = supabase
+      .channel('order_updates')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const newStatus = payload.new.status;
+          const oldStatus = payload.old.status;
+
+          if (newStatus !== oldStatus) {
+            const newNotif: Notification = {
+              id: Date.now().toString(),
+              message: `Your Order ID: #${payload.new.id.slice(0,8)} is now ${newStatus.toUpperCase()}`,
+              type: 'order_status',
+              createdAt: new Date().toISOString(),
+              isRead: false,
+              orderId: payload.new.id
+            };
+            setNotifications(prev => {
+              const updated = [newNotif, ...prev];
+              localStorage.setItem(`notifs_${user.id}`, JSON.stringify(updated.slice(0, 20))); // Keep last 20
+              return updated;
+            });
+            // Show simple toast alert for live feedback
+            alert(`🔔 Order Update: Your order is now ${newStatus}!`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -133,39 +179,33 @@ const App: React.FC = () => {
     initialize();
   }, []);
 
-  // Category CRUD
+  const handleMarkNotifsRead = () => {
+    if (!user) return;
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, isRead: true }));
+      localStorage.setItem(`notifs_${user.id}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const handleAddCategory = async (name: string) => {
     const { error } = await supabase.from('categories').insert([{ name }]);
-    if (error) {
-      if (error.message.includes('relation "public.categories" does not exist') || error.message.includes('schema cache')) {
-        alert("❌ Database Error: আপনি এখনো `categories` টেবিল তৈরি করেননি। অ্যাডমিন প্যানেলের 'DB Help' সেকশনে গিয়ে SQL কোডটি কপি করুন এবং Supabase SQL Editor-এ রান করুন।");
-      } else {
-        alert("❌ Tab Create Error: " + error.message);
-      }
-      throw error; // Re-throw to handle in component
-    }
+    if (error) throw error;
     await fetchData();
   };
 
   const handleUpdateCategory = async (id: string, name: string) => {
     const { error } = await supabase.from('categories').update({ name }).eq('id', id);
-    if (error) {
-      alert("❌ Tab Update Error: " + error.message);
-      return;
-    }
+    if (error) throw error;
     await fetchData();
   };
 
   const handleDeleteCategory = async (id: string) => {
     const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (error) {
-      alert("❌ Tab Delete Error: " + error.message);
-      return;
-    }
+    if (error) throw error;
     await fetchData();
   };
 
-  // Admin CRUD Implementations
   const handleAddProduct = async (p: Omit<Product, 'id'>) => {
     const { error } = await supabase.from('products').insert([{
       name: p.name,
@@ -177,10 +217,7 @@ const App: React.FC = () => {
       rating: p.rating,
       is_public: p.isPublic
     }]);
-    if (error) {
-      alert("❌ Save Error: " + error.message);
-      return;
-    }
+    if (error) return;
     await fetchData();
   };
 
@@ -190,43 +227,20 @@ const App: React.FC = () => {
       updateData.is_public = p.isPublic;
       delete updateData.isPublic;
     }
-    
-    const { error } = await supabase
-      .from('products')
-      .update(updateData)
-      .eq('id', id);
-      
-    if (error) {
-      alert("❌ Update Error: " + error.message);
-      return;
-    }
+    const { error } = await supabase.from('products').update(updateData).eq('id', id);
+    if (error) return;
     await fetchData();
   };
 
   const handleDeleteProduct = async (id: string) => {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) {
-      alert("❌ Delete Error: " + error.message);
-      return;
-    }
+    if (error) return;
     await fetchData();
   };
 
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
-    if (error) {
-      alert("❌ Status Update Error: " + error.message);
-      return;
-    }
-    await fetchData();
-  };
-
-  const handleDeleteOrder = async (id: string) => {
-    const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) {
-      alert("❌ Order Delete Error: " + error.message);
-      return;
-    }
+    if (error) return;
     await fetchData();
   };
 
@@ -293,8 +307,10 @@ const App: React.FC = () => {
         setView={(v) => { if(v === 'shop') resetToShop(); else setCurrentView(v); }} 
         cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
         user={user}
+        notifications={notifications}
         onLogout={async () => { await supabase.auth.signOut(); setUser(null); setCart([]); resetToShop(); }}
         onAuthClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
+        onMarkNotificationsRead={handleMarkNotifsRead}
       />
 
       {currentView === 'shop' && <ProductTicker products={products.filter(p => p.isPublic)} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
@@ -302,11 +318,8 @@ const App: React.FC = () => {
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 md:py-6 relative z-10">
         {currentView === 'shop' ? (
           <div className="space-y-4 md:space-y-6">
-            
-            {/* New Hero Banner Component */}
             <HeroBanner onShopClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} />
 
-            {/* Control Bar */}
             <div ref={shopSectionRef} className="bg-white border border-slate-200 rounded-2xl md:rounded-[2rem] p-1 shadow-sm flex flex-col md:flex-row items-center gap-1 md:gap-4 sticky top-24 z-30">
                 <div className="flex flex-wrap items-center gap-1 w-full md:flex-1 p-1">
                     {dynamicCategories.map(cat => (
@@ -314,25 +327,20 @@ const App: React.FC = () => {
                             key={cat} 
                             onClick={() => setSelectedCategory(cat)} 
                             className={`px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-tight md:tracking-widest transition-all whitespace-nowrap
-                                ${selectedCategory === cat 
-                                    ? 'bg-[#0F172A] text-white shadow-md' 
-                                    : 'text-slate-400 hover:bg-slate-50'
-                                }`}
+                                ${selectedCategory === cat ? 'bg-[#0F172A] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
                         >
                             {cat}
                         </button>
                     ))}
                 </div>
                 <div className="w-full md:w-auto p-1 md:pr-2">
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
-                            className="w-full md:w-40 px-4 py-1.5 md:py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none text-[10px] md:text-xs font-bold focus:bg-white focus:border-blue-600 transition-all" 
-                            value={searchQuery} 
-                            onChange={e => setSearchQuery(e.target.value)} 
-                        />
-                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Search..." 
+                      className="w-full md:w-40 px-4 py-1.5 md:py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none text-[10px] md:text-xs font-bold focus:bg-white focus:border-blue-600 transition-all" 
+                      value={searchQuery} 
+                      onChange={e => setSearchQuery(e.target.value)} 
+                    />
                 </div>
             </div>
 
@@ -350,13 +358,6 @@ const App: React.FC = () => {
                     }} onViewDetails={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />
                   ))}
                 </div>
-              
-              {filteredProducts.length === 0 && (
-                <div className="text-center py-24 bg-white rounded-[3rem] border border-slate-100 shadow-inner">
-                  <p className="text-slate-400 font-black uppercase tracking-widest text-[10px]">No services found</p>
-                  <button onClick={resetToShop} className="mt-6 text-blue-600 font-black uppercase tracking-widest text-[9px] hover:underline">Return to Home</button>
-                </div>
-              )}
             </div>
           </div>
         ) : currentView === 'product-detail' && selectedProduct ? (
@@ -371,7 +372,7 @@ const App: React.FC = () => {
           }} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
           <CheckoutView items={cart} onBack={resetToShop} onSuccess={async (order) => {
-            const { error } = await supabase.from('orders').insert([{
+            const { error, data } = await supabase.from('orders').insert([{
               user_id: user?.id,
               items: order.items,
               total: order.total,
@@ -382,9 +383,16 @@ const App: React.FC = () => {
               payment_method: order.paymentMethod,
               transaction_id: order.transactionId,
               screenshot_url: order.screenshotUrl
-            }]);
+            }]).select();
             if (!error) {
-              alert("✅ Order Placed Successfully!");
+              const newNotif: Notification = {
+                id: Date.now().toString(),
+                message: `✅ Order Placed! ID: #${data[0].id.slice(0,8)}. Admin will verify soon.`,
+                type: 'system',
+                createdAt: new Date().toISOString(),
+                isRead: false
+              };
+              setNotifications(prev => [newNotif, ...prev]);
               setCart([]);
               resetToShop();
               fetchData();
@@ -401,7 +409,6 @@ const App: React.FC = () => {
             onUpdateProduct={handleUpdateProduct} 
             onDeleteProduct={handleDeleteProduct} 
             onUpdateOrderStatus={handleUpdateOrderStatus}
-            onDeleteOrder={handleDeleteOrder}
             onAddCategory={handleAddCategory}
             onUpdateCategory={handleUpdateCategory}
             onDeleteCategory={handleDeleteCategory}
@@ -412,104 +419,54 @@ const App: React.FC = () => {
         )}
       </main>
 
+      {/* Admin Pass Modal */}
       {showAdminPassModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#0F172A]/80 backdrop-blur-3xl transition-all duration-700 animate-in fade-in">
           <div className="relative bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-500 w-full max-w-[440px] flex flex-col items-center">
-            {/* Owner Profile Section with Glowing Ring & Verified Badge */}
             <div className="relative mb-10 group">
-              {/* Spinning Glow Ring */}
               <div className="absolute inset-[-15px] rounded-full border-2 border-dashed border-blue-500/30 animate-[spin_10s_linear_infinite]"></div>
-              {/* Outer Glow Ring */}
               <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-blue-600 opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-700"></div>
-              
-              {/* Profile Image Container */}
               <div className="relative w-40 h-40 rounded-full border-[8px] border-white overflow-hidden shadow-2xl z-10 transition-transform duration-700 group-hover:scale-105">
                 <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
               </div>
-
-              {/* Verified Badge (Tick Mark) */}
               <div className="absolute bottom-2 right-2 z-20 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-slate-50 scale-100 group-hover:scale-110 transition-transform duration-500">
-                <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24">
-                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                </svg>
+                <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
               </div>
             </div>
-
-            {/* Admin Identity */}
             <div className="text-center mb-10">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <h3 className="text-3xl font-black text-[#0F172A] uppercase tracking-tighter">Mehedi Hasan</h3>
-                </div>
-                <div className="flex items-center justify-center gap-3">
-                  <div className="h-[1px] w-8 bg-slate-200"></div>
-                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] whitespace-nowrap">Security Terminal</h2>
-                  <div className="h-[1px] w-8 bg-slate-200"></div>
-                </div>
+                <h3 className="text-3xl font-black text-[#0F172A] uppercase tracking-tighter">Mehedi Hasan</h3>
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] whitespace-nowrap">Security Terminal</h2>
             </div>
-
             <form className="w-full space-y-8" onSubmit={(e) => { 
                 e.preventDefault(); 
                 if(adminInputPass === ADMIN_PASSWORD) { 
                   localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ auth: true, timestamp: Date.now() }));
                   setIsAdminAuthenticated(true); setCurrentView('admin'); setShowAdminPassModal(false); 
-                } else {
-                  alert("❌ Invalid Identity Key");
-                }
+                } else { alert("❌ Invalid Identity Key"); }
               }}>
-              <div className="relative group">
-                <input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="w-full px-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] text-center font-black tracking-[0.8em] transition-all text-2xl focus:border-blue-500 focus:bg-white outline-none placeholder:text-slate-200 placeholder:tracking-normal shadow-inner" 
-                  value={adminInputPass} 
-                  onChange={e => setAdminInputPass(e.target.value)} 
-                />
-              </div>
-
-              <button 
-                type="submit" 
-                className="w-full py-6 bg-[#0F172A] text-white rounded-[2.5rem] font-black uppercase text-xs tracking-[0.3em] hover:bg-blue-600 hover:shadow-[0_20px_40px_rgba(37,99,235,0.3)] transition-all shadow-2xl active:scale-[0.98] flex items-center justify-center gap-3"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                Authorize Access
-              </button>
+              <input type="password" placeholder="••••••••" className="w-full px-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] text-center font-black tracking-[0.8em] transition-all text-2xl focus:border-blue-500 focus:bg-white outline-none shadow-inner" value={adminInputPass} onChange={e => setAdminInputPass(e.target.value)} />
+              <button type="submit" className="w-full py-6 bg-[#0F172A] text-white rounded-[2.5rem] font-black uppercase text-xs tracking-[0.3em] hover:bg-blue-600 shadow-2xl transition-all">Authorize Access</button>
             </form>
-            
-            {/* Dismiss Button */}
-            <button 
-              onClick={() => setShowAdminPassModal(false)}
-              className="mt-10 text-[9px] font-black text-slate-300 uppercase tracking-widest hover:text-red-500 transition-colors flex items-center gap-2"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-              Cancel Authentication
-            </button>
+            <button onClick={() => setShowAdminPassModal(false)} className="mt-10 text-[9px] font-black text-slate-300 uppercase tracking-widest hover:text-red-500 transition-colors">Cancel Authentication</button>
           </div>
         </div>
       )}
 
-      {currentView !== 'admin' && (
-        <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
-          <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
-            <div className="flex items-center gap-4">
-              {/* DS Store Footer Logo */}
-              <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
-                <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
-                <div className="flex items-baseline relative z-10 font-black text-sm">
-                  <span className="text-blue-600">D</span>
-                  <span className="text-green-500 -ml-0.5">S</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-start">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
-                <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>
-                  Mehedi Hasan • DS STORE GLOBAL
-                </p>
-              </div>
+      <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
+        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="flex items-center gap-4">
+            <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
+              <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
+              <div className="flex items-baseline relative z-10 font-black text-sm"><span className="text-blue-600">D</span><span className="text-green-500 -ml-0.5">S</span></div>
             </div>
-            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2005-2025 DS SERVICE STORE</p>
+            <div className="flex flex-col items-start">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
+              <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>Mehedi Hasan • DS STORE GLOBAL</p>
+            </div>
           </div>
-        </footer>
-      )}
+          <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2005-2025 DS SERVICE STORE</p>
+        </div>
+      </footer>
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, q) => setCart(cart.map(i => i.id === id ? {...i, quantity: q} : i))} onCheckout={() => { setIsCartOpen(false); setCurrentView('checkout'); }} />
       <AuthModal isOpen={isAuthModalOpen} initialMode={authMode} onClose={() => setIsAuthModalOpen(false)} onLogin={(u) => setUser(u)} />

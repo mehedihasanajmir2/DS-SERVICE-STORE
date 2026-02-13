@@ -43,4 +43,13 @@ export interface Order {
   screenshotUrl?: string;
 }
 
+export interface Notification {
+  id: string;
+  message: string;
+  type: 'order_status' | 'system';
+  createdAt: string;
+  isRead: boolean;
+  orderId?: string;
+}
+
 export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin' | 'profile';
