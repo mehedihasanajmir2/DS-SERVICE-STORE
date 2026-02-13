@@ -25,7 +25,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onDeleteOrder,
   onBack 
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'orders' | 'help'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -108,6 +108,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setFormData({ name: '', description: '', price: 0, category: CATEGORIES[1], image: '', stock: 10, rating: 5 });
   };
 
+  const sqlCode = `-- RUN THIS IN SUPABASE SQL EDITOR TO SETUP TABLES
+CREATE TABLE IF NOT EXISTS products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  price numeric NOT NULL DEFAULT 0,
+  category text,
+  image text,
+  stock integer DEFAULT 10,
+  rating numeric DEFAULT 5,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read" ON products FOR SELECT USING (true);
+CREATE POLICY "Allow anon all" ON products FOR ALL USING (true); -- Note: For production use proper auth!
+`;
+
   return (
     <div className="animate-in fade-in duration-1000 max-w-7xl mx-auto space-y-10 pb-20">
       <div className="relative overflow-hidden bg-slate-900 rounded-[3rem] p-8 shadow-2xl border border-white/10 group">
@@ -130,6 +148,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-4">
+             <button onClick={() => setActiveTab('help')} className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              DB Help
+            </button>
             <button onClick={onBack} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               Sign Out
@@ -174,6 +196,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </button>
         ))}
       </div>
+
+      {activeTab === 'help' && (
+        <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm space-y-8 animate-in zoom-in-95 duration-500">
+           <div className="text-center max-w-2xl mx-auto space-y-4">
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database Setup Helper</h2>
+              <p className="text-slate-500 font-medium">যদি আপনি পোস্ট সেভ করতে না পারেন, তবে নিচের SQL কোডটি কপি করে আপনার Supabase SQL Editor-এ রান করুন। এটি সঠিক টেবিল তৈরি করে দিবে।</p>
+           </div>
+           
+           <div className="relative group">
+              <div className="absolute inset-0 bg-blue-600/5 blur-xl rounded-[2rem] -z-10 group-hover:bg-blue-600/10 transition-all"></div>
+              <pre className="bg-slate-900 text-cyan-400 p-8 rounded-[2rem] font-mono text-sm overflow-x-auto border border-white/10 shadow-2xl relative">
+                  <button 
+                    onClick={() => { navigator.clipboard.writeText(sqlCode); alert("SQL Copied!"); }}
+                    className="absolute top-4 right-4 px-4 py-2 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all"
+                  >
+                    Copy SQL
+                  </button>
+                  {sqlCode}
+              </pre>
+           </div>
+           
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                { title: '১. লগইন করুন', desc: 'Supabase Dashboard-এ যান' },
+                { title: '২. SQL Editor', desc: 'বাম পাশের মেনু থেকে SQL Editor সিলেক্ট করুন' },
+                { title: '৩. রান করুন', desc: 'উপরের কোডটি পেস্ট করে "Run" বাটন ক্লিক করুন' }
+              ].map((step, i) => (
+                <div key={i} className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-4">
+                  <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs flex-shrink-0">{i+1}</span>
+                  <div>
+                    <h4 className="font-black text-slate-900 uppercase text-[11px] tracking-widest">{step.title}</h4>
+                    <p className="text-xs font-bold text-slate-500 mt-1">{step.desc}</p>
+                  </div>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
 
       {activeTab === 'dashboard' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in slide-in-from-bottom-6 duration-700">
@@ -268,7 +328,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                        <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Service Image URL / Upload</label>
                           <div className="flex gap-4">
-                            <input className="flex-1 px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-xs" value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} />
+                            <input className="flex-1 px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-xs" value={formData.image} placeholder="https://..." onChange={e => setFormData({...formData, image: e.target.value})} />
                             <button type="button" onClick={() => fileInputRef.current?.click()} className="px-6 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] hover:bg-blue-600 transition-all">{uploading ? '...' : 'Upload'}</button>
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                           </div>

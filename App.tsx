@@ -53,6 +53,7 @@ const App: React.FC = () => {
       if (!prodError && dbProducts) {
         setProducts(dbProducts.length > 0 ? dbProducts : INITIAL_PRODUCTS);
       } else {
+        console.error("Products Fetch Error:", prodError);
         setProducts(INITIAL_PRODUCTS);
       }
 
@@ -128,32 +129,44 @@ const App: React.FC = () => {
 
   const handleAddProduct = async (newProduct: Omit<Product, 'id'>) => {
     try {
+      // Generate a client-side ID to be safe
+      const fullProduct = {
+        ...newProduct,
+        id: crypto.randomUUID()
+      };
+
       const { error } = await supabase
         .from('products')
-        .insert([newProduct]);
+        .insert([fullProduct]);
 
       if (error) throw error;
       
-      alert("✅ Product Published Successfully!");
+      alert("✅ Product Added to Database Successfully!");
       await fetchData();
     } catch (err: any) {
-      alert("❌ Error: " + err.message);
+      console.error("Insert Error:", err);
+      alert("❌ Save Error: " + (err.message || "Please check your Supabase table schema."));
     }
   };
 
   const handleUpdateProduct = async (id: string, updatedFields: Partial<Product>) => {
     try {
+      // Using upsert ensures that if the product ID exists, it updates, 
+      // if not (like with initial data), it creates a new row.
       const { error } = await supabase
         .from('products')
-        .update(updatedFields)
-        .eq('id', id);
+        .upsert({
+          id: id,
+          ...updatedFields
+        });
 
       if (error) throw error;
 
-      alert("✅ Product Updated in Database!");
+      alert("✅ Changes Saved Successfully!");
       await fetchData();
     } catch (err: any) {
-      alert("❌ Update Failed: " + err.message);
+      console.error("Upsert Error:", err);
+      alert("❌ Save Failed: " + (err.message || "Failed to sync with database."));
     }
   };
 
