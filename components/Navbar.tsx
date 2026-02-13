@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { View, User, Notification } from '../types';
+import { Logo } from './Logo';
 
 interface NavbarProps {
   currentView: View;
@@ -27,24 +28,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
-  // Use the horizontal logo image
-  const logoUrl = "https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj"; 
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          {/* LEFT SIDE: BRAND LOGO IMAGE ONLY */}
+          {/* LEFT SIDE: BRAND LOGO COMPONENT */}
           <div className="flex items-center gap-4">
             <div 
               className="flex items-center cursor-pointer hover:opacity-80 transition-opacity" 
               onClick={() => setView('shop')}
             >
-              <img 
-                src={logoUrl} 
-                alt="DS SERVICE STORE" 
-                className="h-10 md:h-12 w-auto object-contain"
-              />
+              <Logo />
             </div>
 
             {/* NAV LINKS */}

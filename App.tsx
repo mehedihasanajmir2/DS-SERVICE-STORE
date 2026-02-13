@@ -12,6 +12,7 @@ import { ProductRain } from './components/ProductRain';
 import { ProfileView } from './components/ProfileView';
 import { HeroBanner } from './components/HeroBanner';
 import { ContactView } from './components/ContactView';
+import { Logo } from './components/Logo';
 import { Product, CartItem, User, View, Order, Category, Notification } from './types';
 import { INITIAL_PRODUCTS, CATEGORIES } from './constants';
 import { supabase } from './supabaseClient';
@@ -44,7 +45,6 @@ const App: React.FC = () => {
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   
   const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo"; 
-  const logoUrl = "https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj";
 
   const fetchData = async () => {
     try {
@@ -241,11 +241,10 @@ const App: React.FC = () => {
     await fetchData();
   };
 
-  // Improved dynamicCategories to always have data even if DB is empty
   const dynamicCategories = useMemo(() => {
     const dbCategoryNames = categories.map(c => c.name);
     if (dbCategoryNames.length === 0) {
-      return CATEGORIES; // Use defaults from constants.ts if DB is empty
+      return CATEGORIES;
     }
     return ['All', ...dbCategoryNames];
   }, [categories]);
@@ -334,7 +333,6 @@ const App: React.FC = () => {
           <div className="space-y-4 md:space-y-6">
             <HeroBanner onShopClick={() => shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' })} />
 
-            {/* CATEGORY TAB BAR - Improved for visibility */}
             <div ref={shopSectionRef} className="bg-white border border-slate-200 rounded-2xl md:rounded-[2.5rem] p-1.5 shadow-xl flex flex-col md:flex-row items-center gap-2 md:gap-4 sticky top-24 z-40 transition-all">
                 <div className="flex flex-nowrap overflow-x-auto items-center gap-1 w-full md:flex-1 p-1 scrollbar-hide">
                     {dynamicCategories.map(cat => (
@@ -494,10 +492,7 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-3 cursor-pointer group" onClick={() => resetToShop()}>
-                <img src={logoUrl} alt="DS Logo" className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105" />
-                <span className="text-sm md:text-base font-black text-slate-900 uppercase tracking-tighter">
-                  DS <span className="text-slate-500">SERVICE STORE</span>
-                </span>
+                <Logo />
               </div>
               <div className="flex flex-col items-start border-l border-slate-100 pl-6">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
