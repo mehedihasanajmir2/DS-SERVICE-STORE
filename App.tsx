@@ -137,8 +137,12 @@ const App: React.FC = () => {
   const handleAddCategory = async (name: string) => {
     const { error } = await supabase.from('categories').insert([{ name }]);
     if (error) {
-      alert("❌ Tab Create Error: " + error.message);
-      return;
+      if (error.message.includes('relation "public.categories" does not exist') || error.message.includes('schema cache')) {
+        alert("❌ Database Error: আপনি এখনো `categories` টেবিল তৈরি করেননি। অ্যাডমিন প্যানেলের 'DB Help' সেকশনে গিয়ে SQL কোডটি কপি করুন এবং Supabase SQL Editor-এ রান করুন।");
+      } else {
+        alert("❌ Tab Create Error: " + error.message);
+      }
+      throw error; // Re-throw to handle in component
     }
     await fetchData();
   };
@@ -409,25 +413,76 @@ const App: React.FC = () => {
       </main>
 
       {showAdminPassModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#0F172A]/80 backdrop-blur-2xl">
-          <div className="relative bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_rgba(0,0,0,0.3)] animate-in zoom-in-95 duration-500 w-full max-w-[480px] flex flex-col items-center border border-white">
-            <div className="relative mb-12 group">
-              <div className="absolute inset-[-15px] rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 opacity-20 blur-2xl group-hover:opacity-40 transition-opacity"></div>
-              <div className="relative w-40 h-40 rounded-full border-[8px] border-white overflow-hidden shadow-2xl z-10">
-                <img src={ownerPhotoUrl} alt="Admin" className="w-full h-full object-cover" />
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-[#0F172A]/80 backdrop-blur-3xl transition-all duration-700 animate-in fade-in">
+          <div className="relative bg-white rounded-[4rem] p-12 shadow-[0_50px_100px_rgba(0,0,0,0.4)] animate-in zoom-in-95 duration-500 w-full max-w-[440px] flex flex-col items-center">
+            {/* Owner Profile Section with Glowing Ring & Verified Badge */}
+            <div className="relative mb-10 group">
+              {/* Spinning Glow Ring */}
+              <div className="absolute inset-[-15px] rounded-full border-2 border-dashed border-blue-500/30 animate-[spin_10s_linear_infinite]"></div>
+              {/* Outer Glow Ring */}
+              <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-blue-600 opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-700"></div>
+              
+              {/* Profile Image Container */}
+              <div className="relative w-40 h-40 rounded-full border-[8px] border-white overflow-hidden shadow-2xl z-10 transition-transform duration-700 group-hover:scale-105">
+                <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
+              </div>
+
+              {/* Verified Badge (Tick Mark) */}
+              <div className="absolute bottom-2 right-2 z-20 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-slate-50 scale-100 group-hover:scale-110 transition-transform duration-500">
+                <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg>
               </div>
             </div>
-            <h2 className="text-3xl font-black text-[#0F172A] uppercase mb-10 tracking-tighter">System Key</h2>
-            <form className="w-full space-y-6" onSubmit={(e) => { 
+
+            {/* Admin Identity */}
+            <div className="text-center mb-10">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h3 className="text-3xl font-black text-[#0F172A] uppercase tracking-tighter">Mehedi Hasan</h3>
+                </div>
+                <div className="flex items-center justify-center gap-3">
+                  <div className="h-[1px] w-8 bg-slate-200"></div>
+                  <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] whitespace-nowrap">Security Terminal</h2>
+                  <div className="h-[1px] w-8 bg-slate-200"></div>
+                </div>
+            </div>
+
+            <form className="w-full space-y-8" onSubmit={(e) => { 
                 e.preventDefault(); 
                 if(adminInputPass === ADMIN_PASSWORD) { 
                   localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify({ auth: true, timestamp: Date.now() }));
                   setIsAdminAuthenticated(true); setCurrentView('admin'); setShowAdminPassModal(false); 
-                } 
+                } else {
+                  alert("❌ Invalid Identity Key");
+                }
               }}>
-              <input type="password" placeholder="••••••••" className="w-full px-10 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-center font-black tracking-[0.6em] transition-all text-2xl focus:border-blue-600 focus:bg-white outline-none" value={adminInputPass} onChange={e => setAdminInputPass(e.target.value)} />
-              <button type="submit" className="w-full py-6 bg-[#0F172A] text-white rounded-[2rem] font-black uppercase tracking-widest hover:bg-blue-600 transition-all shadow-2xl shadow-blue-200">Verify Identity</button>
+              <div className="relative group">
+                <input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="w-full px-8 py-6 bg-slate-50 border-2 border-slate-100 rounded-[2.5rem] text-center font-black tracking-[0.8em] transition-all text-2xl focus:border-blue-500 focus:bg-white outline-none placeholder:text-slate-200 placeholder:tracking-normal shadow-inner" 
+                  value={adminInputPass} 
+                  onChange={e => setAdminInputPass(e.target.value)} 
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-6 bg-[#0F172A] text-white rounded-[2.5rem] font-black uppercase text-xs tracking-[0.3em] hover:bg-blue-600 hover:shadow-[0_20px_40px_rgba(37,99,235,0.3)] transition-all shadow-2xl active:scale-[0.98] flex items-center justify-center gap-3"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                Authorize Access
+              </button>
             </form>
+            
+            {/* Dismiss Button */}
+            <button 
+              onClick={() => setShowAdminPassModal(false)}
+              className="mt-10 text-[9px] font-black text-slate-300 uppercase tracking-widest hover:text-red-500 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+              Cancel Authentication
+            </button>
           </div>
         </div>
       )}

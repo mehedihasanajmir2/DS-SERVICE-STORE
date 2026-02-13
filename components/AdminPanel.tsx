@@ -141,14 +141,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryName.trim()) return;
-    if (editingCategoryId) {
-      await onUpdateCategory(editingCategoryId, categoryName);
-    } else {
-      await onAddCategory(categoryName);
+    try {
+      if (editingCategoryId) {
+        await onUpdateCategory(editingCategoryId, categoryName);
+      } else {
+        await onAddCategory(categoryName);
+      }
+      setCategoryName('');
+      setEditingCategoryId(null);
+      setIsCategoryFormOpen(false);
+    } catch (err: any) {
+      // Handled in parent
     }
-    setCategoryName('');
-    setEditingCategoryId(null);
-    setIsCategoryFormOpen(false);
   };
 
   const resetForm = () => {
@@ -166,21 +170,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   };
 
-  const sqlCode = `-- ১. SQL EDITOR-এ গিয়ে এই কোডটি রান করুন:
+  const sqlCode = `-- [১] Categories (Tab) টেবিল সেটআপ
 CREATE TABLE IF NOT EXISTS categories (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL UNIQUE,
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ডাটা মাইগ্রেশন (ঐচ্ছিক):
-INSERT INTO categories (name) VALUES 
-('Apple (New)'), ('Apple (Old)'), ('iCloud'), ('Virtual Card'), ('Gmail ID'), ('Facebook ID')
-ON CONFLICT (name) DO NOTHING;
-
-ALTER TABLE products ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT true;
-
--- Products টেবিল আপডেট (যদি না থাকে)
+-- [২] Products (Service) টেবিল সেটআপ
 CREATE TABLE IF NOT EXISTS products (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -194,13 +191,36 @@ CREATE TABLE IF NOT EXISTS products (
   created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- সিকিউরিটি
+-- [৩] Orders (বিক্রয় তথ্য) টেবিল সেটআপ
+CREATE TABLE IF NOT EXISTS orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid,
+  items jsonb NOT NULL,
+  total numeric NOT NULL,
+  status text DEFAULT 'pending',
+  full_name text,
+  whatsapp_number text,
+  delivery_email text,
+  payment_method text,
+  transaction_id text,
+  screenshot_url text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- [৪] ডিফল্ট ট্যাব বা ক্যাটাগরি ডাটা যোগ করা
+INSERT INTO categories (name) VALUES 
+('Apple (New)'), ('Apple (Old)'), ('iCloud'), ('Virtual Card'), ('Gmail ID'), ('Facebook ID')
+ON CONFLICT (name) DO NOTHING;
+
+-- [৫] টেবিল সিকিউরিটি (RLS) ও পারমিশন সেটআপ
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public read" ON products FOR SELECT USING (true);
-CREATE POLICY "Allow anon all" ON products FOR ALL USING (true);
-CREATE POLICY "Allow public cat read" ON categories FOR SELECT USING (true);
-CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+-- সবার জন্য ডাটা দেখার ও পরিবর্তন করার অনুমতি (অ্যানোনিমাস অ্যাক্সেস)
+CREATE POLICY "Enable all for public" ON products FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for public" ON categories FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for public" ON orders FOR ALL USING (true) WITH CHECK (true);
 `;
 
   return (
@@ -214,6 +234,12 @@ CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
               <div className="absolute inset-[-6px] rounded-full bg-gradient-to-tr from-blue-600 to-cyan-400 animate-pulse opacity-50"></div>
               <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden shadow-2xl">
                 <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
+              </div>
+              {/* Verified Badge (Tick Mark) */}
+              <div className="absolute bottom-0 right-0 z-20 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-slate-50">
+                <svg className="w-5 h-5 text-blue-600 fill-current" viewBox="0 0 24 24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg>
               </div>
             </div>
             <div>
@@ -281,6 +307,20 @@ CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
       {/* Tab Manager Section */}
       {activeTab === 'tabs' && (
         <div className="space-y-8 animate-in slide-in-from-bottom-6 duration-700">
+           {/* Database Table Missing Warning */}
+           {categories.length === 0 && (
+             <div className="bg-red-50 border-4 border-red-200 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-6 shadow-xl animate-pulse">
+                <div className="w-16 h-16 bg-red-600 text-white rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-xl font-black text-red-900 uppercase tracking-tight">Database Table Missing!</h3>
+                  <p className="text-sm font-bold text-red-700 mt-1">আপনি এখনো ডাটাবেসে `categories` টেবিল তৈরি করেননি। নিচের "Go to DB Help" বাটনে ক্লিক করে SQL কোডটি কপি করুন এবং Supabase SQL Editor-এ রান করুন।</p>
+                </div>
+                <button onClick={() => setActiveTab('help')} className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all">Go to DB Help</button>
+             </div>
+           )}
+
            <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
               <div>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight ml-4">Tab Configuration</h2>
@@ -348,6 +388,11 @@ CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
                     </p>
                  </div>
               ))}
+              {categories.length === 0 && (
+                <div className="col-span-full py-20 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] text-center">
+                   <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No active tabs found. Please run the Database Setup.</p>
+                </div>
+              )}
            </div>
         </div>
       )}
@@ -356,28 +401,37 @@ CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
       {activeTab === 'help' && (
         <div className="bg-white rounded-[3rem] p-10 border border-slate-200 shadow-sm space-y-12 animate-in zoom-in-95 duration-500">
            <div className="text-center max-w-2xl mx-auto space-y-4">
-              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database & Storage Helper</h2>
-              <p className="text-slate-500 font-medium">নতুন Tab Manager কাজ করার জন্য নিচের SQL কোডটি অবশ্যই রান করতে হবে।</p>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Database Master SQL</h2>
+              <p className="text-slate-500 font-medium">নিচের SQL কোডটি আপনার Supabase SQL Editor-এ কপি করে একবারে রান করুন।</p>
            </div>
            
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+           <div className="grid grid-cols-1 gap-10">
               <div className="space-y-6">
-                <h3 className="text-lg font-black text-slate-900 uppercase">১. ডাটাবেস টেবিল সেটআপ (SQL)</h3>
-                <pre className="bg-slate-900 text-cyan-400 p-6 rounded-2xl font-mono text-xs overflow-x-auto relative">
-                    <button onClick={() => { navigator.clipboard.writeText(sqlCode); alert("SQL Copied!"); }} className="absolute top-4 right-4 text-[9px] bg-white/10 px-2 py-1 rounded">Copy</button>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black text-slate-900 uppercase">১. সকল SQL কোড (একসাথে)</h3>
+                    <button onClick={() => { navigator.clipboard.writeText(sqlCode); alert("✅ All SQL Copied! Now paste it in Supabase SQL Editor."); }} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 transition-all">Copy Full Script</button>
+                </div>
+                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl mb-4">
+                   <p className="text-xs font-bold text-amber-700">Supabase-এর বাম পাশে **SQL Editor** মেনুতে গিয়ে এটি রান করুন। এতে আপনার Categories, Products এবং Orders টেবিলসহ সব পলিসি তৈরি হয়ে যাবে।</p>
+                </div>
+                <pre className="bg-slate-900 text-cyan-400 p-8 rounded-[2rem] font-mono text-xs overflow-x-auto border border-white/10 shadow-2xl max-h-[500px] overflow-y-auto">
                     {sqlCode}
                 </pre>
               </div>
+
               <div className="space-y-6">
-                <h3 className="text-lg font-black text-slate-900 uppercase">২. ফটো আপলোড সেটআপ (Storage)</h3>
-                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4">
-                   <p className="text-xs font-bold text-blue-700">ডিভাইস থেকে ফটো আপলোড কাজ না করলে Supabase Dashboard-এ নিচের কাজটি করুন:</p>
-                   <ol className="text-xs space-y-3 font-medium text-slate-600">
-                      <li>• Supabase-এর বাম পাশে **Storage** মেনুতে যান।</li>
-                      <li>• **New Bucket** বাটনে ক্লিক করুন।</li>
-                      <li>• বাকেটের নাম দিন: <code className="bg-white px-2 py-0.5 rounded font-black text-blue-600">products</code></li>
-                      <li>• **Public Bucket** অপশনটি অবশ্যই **On** করে দিন।</li>
-                      <li>• এরপর **Save** করুন। এখন আপনি ডিভাইস থেকে ফটো ব্যবহার করতে পারবেন।</li>
+                <h3 className="text-xl font-black text-slate-900 uppercase">২. ফটো আপলোড সেটআপ (Storage)</h3>
+                <div className="bg-blue-50 p-8 rounded-[2.5rem] border border-blue-100 space-y-6 shadow-sm">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center">
+                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      </div>
+                      <p className="text-sm font-black text-blue-900 uppercase">Storage Bucket Configuration</p>
+                   </div>
+                   <ol className="text-xs space-y-4 font-bold text-slate-600">
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 bg-white border border-blue-200 rounded-lg flex items-center justify-center text-[10px]">১</span> Supabase Dashboard-এর বাম পাশে **Storage** মেনুতে যান।</li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 bg-white border border-blue-200 rounded-lg flex items-center justify-center text-[10px]">২</span> **New Bucket** ক্লিক করে নাম দিন: <code className="bg-white px-2 py-0.5 rounded font-black text-blue-600">products</code></li>
+                      <li className="flex items-start gap-3"><span className="w-5 h-5 bg-white border border-blue-200 rounded-lg flex items-center justify-center text-[10px]">৩</span> **Public Bucket** অপশনটি অবশ্যই **On** করে দিন।</li>
                    </ol>
                 </div>
               </div>
@@ -458,6 +512,7 @@ CREATE POLICY "Allow anon cat all" ON categories FOR ALL USING (true);
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category Configuration</label>
                         <select className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-black focus:border-blue-600 appearance-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                          {categories.length === 0 && <option value="">No categories - Run DB Setup</option>}
                           {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                         </select>
                       </div>
