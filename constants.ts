@@ -12,8 +12,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'New Apple Account',
     image: 'https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj',
     stock: 0,
-    rating: 4.9,
-    is_published: true
+    rating: 4.9
   },
   {
     id: 'd4d4d4d4-d4d4-d4d4-d4d4-d4d4d4d4d4d4',
@@ -23,8 +22,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'Old Apple Account',
     image: 'https://play-lh.googleusercontent.com/OdTRFsZcHBBeN3XzAtlD9F-y9E19vuTSt_MZhh7QWdsQRrtpAqbEffvzNGGtlkMs2yCj',
     stock: 0,
-    rating: 4.7,
-    is_published: true
+    rating: 4.7
   },
   {
     id: 'c3c3c3c3-c3c3-c3c3-c3c3-c3c3c3c3c3c3',
@@ -34,8 +32,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Icloud',
     image: 'https://www.blueapplesystems.co.uk/uploads/6/0/2/7/60276537/icloud_orig.png',
     stock: 100,
-    rating: 4.9,
-    is_published: true
+    rating: 4.9
   },
   {
     id: 'b8b8b8b8-b8b8-b8b8-b8b8-b8b8b8b8b8b8',
@@ -45,8 +42,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Icloud',
     image: 'https://www.blueapplesystems.co.uk/uploads/6/0/2/7/60276537/icloud_orig.png',
     stock: 0,
-    rating: 4.9,
-    is_published: true
+    rating: 4.9
   },
   {
     id: 'a2a2a2a2-a2a2-a2a2-a2a2-a2a2a2a2a2a2',
@@ -56,8 +52,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Virtual Card',
     image: 'https://media.gettyimages.com/id/79989029/photo/visa-plans-largest-ipo-in-u-s-history.jpg?s=594x594&w=gi&k=20&c=OqVn902U2U7PNJKpVohns7W3YR6dgNHjbhIR5ATc5BY=',
     stock: 0,
-    rating: 4.8,
-    is_published: true
+    rating: 4.8
   },
   {
     id: 'f6f6f6f6-f6f6-f6f6-f6f6-f6f6f6f6f6f6',
@@ -67,8 +62,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Gmail Id',
     image: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
     stock: 0,
-    rating: 4.8,
-    is_published: true
+    rating: 4.8
   },
   {
     id: 'a7a7a7a7-a7a7-a7a7-a7a7-a7a7a7a7a7a7',
@@ -78,8 +72,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Gmail Id',
     image: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg',
     stock: 0,
-    rating: 4.8,
-    is_published: true
+    rating: 4.8
   },
   {
     id: 'f7f7f7f7-f7f7-f7f7-f7f7-f7f7f7f7f7f7',
@@ -89,7 +82,6 @@ export const INITIAL_PRODUCTS: Product[] = [
     category: 'All Type Facebook Id',
     image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg',
     stock: 0,
-    rating: 4.7,
-    is_published: true
+    rating: 4.7
   }
 ];

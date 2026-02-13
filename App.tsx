@@ -86,7 +86,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        // 1. Check for persistent Admin Session
         const storedSession = localStorage.getItem(ADMIN_SESSION_KEY);
         if (storedSession) {
           const sessionData = JSON.parse(storedSession);
@@ -98,7 +97,6 @@ const App: React.FC = () => {
           }
         }
 
-        // 2. Check for User Auth
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser({
@@ -121,11 +119,10 @@ const App: React.FC = () => {
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const isPublished = p.is_published !== false;
       const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                            p.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return isPublished && matchesCategory && matchesSearch;
+      return matchesCategory && matchesSearch;
     });
   }, [products, selectedCategory, searchQuery]);
 
@@ -133,7 +130,7 @@ const App: React.FC = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .insert([{ ...newProduct, is_published: true }]);
+        .insert([newProduct]);
 
       if (error) throw error;
       
@@ -148,7 +145,8 @@ const App: React.FC = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .upsert({ ...updatedFields, id: id });
+        .update(updatedFields)
+        .eq('id', id);
 
       if (error) throw error;
 
@@ -195,7 +193,6 @@ const App: React.FC = () => {
   };
 
   const handleAdminAccessTrigger = () => {
-    // If already authenticated, skip modal and go straight to panel
     if (isAdminAuthenticated) {
       setCurrentView('admin');
       return;
@@ -233,7 +230,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] relative">
-      {(currentView === 'shop' || currentView === 'profile') && <ProductRain products={products.filter(p => p.is_published !== false)} />}
+      {(currentView === 'shop' || currentView === 'profile') && <ProductRain products={products} />}
 
       <Navbar 
         currentView={currentView} 
@@ -244,7 +241,7 @@ const App: React.FC = () => {
         onAuthClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
       />
 
-      {currentView === 'shop' && <ProductTicker products={products.filter(p => p.is_published !== false)} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
+      {currentView === 'shop' && <ProductTicker products={products} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
 
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {currentView === 'shop' ? (
@@ -296,7 +293,6 @@ const App: React.FC = () => {
           }} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
           <CheckoutView items={cart} onBack={resetToShop} onSuccess={async (order) => {
-            // 1. DEDUCT STOCK IMMEDIATELY ON SUCCESSFUL CHECKOUT
             for (const item of order.items) {
               const { data: currentProduct } = await supabase
                 .from('products')
@@ -313,7 +309,6 @@ const App: React.FC = () => {
               }
             }
 
-            // 2. CREATE THE ORDER
             const { error } = await supabase.from('orders').insert([{
               user_id: user?.id,
               items: order.items,
@@ -368,7 +363,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* ULTRA-PREMIUM ADMIN PASS MODAL */}
       {showAdminPassModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-2xl transition-all duration-700">
           <div className="relative bg-white/90 rounded-[4rem] p-12 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.25)] animate-in zoom-in-95 duration-500 w-full max-w-[500px] flex flex-col items-center border border-white/50">
@@ -424,7 +418,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* FOOTER - Hidden in Admin Panel */}
       {currentView !== 'admin' && (
         <footer className="bg-[#0F172A] text-white/30 py-16 mt-20 border-t border-white/5 relative z-10">
           <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center md:items-start gap-6">

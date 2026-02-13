@@ -8,7 +8,6 @@ export interface Product {
   image: string;
   stock: number;
   rating: number;
-  is_published?: boolean;
 }
 
 export interface CartItem extends Product {
