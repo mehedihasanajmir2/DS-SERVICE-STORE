@@ -11,6 +11,7 @@ interface NavbarProps {
   onLogout: () => void;
   onAuthClick: () => void;
   onMarkNotificationsRead: () => void;
+  onServicesClick: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ 
@@ -21,7 +22,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   notifications,
   onLogout, 
   onAuthClick,
-  onMarkNotificationsRead
+  onMarkNotificationsRead,
+  onServicesClick
 }) => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -31,23 +33,37 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* LEFT SIDE: LOGO + NAVIGATION */}
-          <div className="flex items-center gap-12">
+          <div className="flex items-center gap-8 md:gap-12">
             <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('shop')}>
-              <div className="relative flex items-center justify-center w-12 h-12">
+              <div className="relative flex items-center justify-center w-10 h-10 md:w-12 md:h-12">
                 <div className="absolute inset-0 border-2 border-cyan-400 rounded-full border-t-transparent animate-[spin_3s_linear_infinite]"></div>
                 <div className="absolute inset-1 border border-blue-500 rounded-full border-b-transparent animate-[spin_2s_linear_infinite_reverse]"></div>
-                <div className="flex items-baseline relative z-10 font-black text-lg">
+                <div className="flex items-baseline relative z-10 font-black text-sm md:text-lg">
                   <span className="text-blue-600 drop-shadow-sm">D</span>
                   <span className="text-green-500 -ml-1 drop-shadow-sm">S</span>
                 </div>
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
-                    DS <span className="font-medium text-slate-600">SERVICE STORE</span>
-                  </span>
-                </div>
+              <div className="hidden sm:flex flex-col">
+                <span className="text-base md:text-xl font-bold tracking-tight text-slate-900 group-hover:text-blue-600 transition-colors">
+                  DS <span className="font-medium text-slate-600">STORE</span>
+                </span>
               </div>
+            </div>
+
+            {/* NAV LINKS */}
+            <div className="flex items-center gap-4 md:gap-8">
+              <button 
+                onClick={onServicesClick}
+                className="text-[10px] md:text-xs font-black text-slate-500 hover:text-blue-600 uppercase tracking-widest transition-colors"
+              >
+                Services
+              </button>
+              <button 
+                onClick={() => setView('contact')}
+                className={`text-[10px] md:text-xs font-black uppercase tracking-widest transition-colors ${currentView === 'contact' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}
+              >
+                Contact
+              </button>
             </div>
           </div>
 

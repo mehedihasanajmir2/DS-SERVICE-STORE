@@ -52,4 +52,4 @@ export interface Notification {
   orderId?: string;
 }
 
-export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin' | 'profile';
+export type View = 'shop' | 'product-detail' | 'checkout' | 'cart' | 'admin' | 'profile' | 'contact';

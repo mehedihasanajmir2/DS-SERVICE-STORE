@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { ProductRain } from './components/ProductRain';
 import { ProfileView } from './components/ProfileView';
 import { HeroBanner } from './components/HeroBanner';
+import { ContactView } from './components/ContactView';
 import { Product, CartItem, User, View, Order, Category, Notification } from './types';
 import { INITIAL_PRODUCTS } from './constants';
 import { supabase } from './supabaseClient';
@@ -289,6 +290,17 @@ const App: React.FC = () => {
     resetToShop();
   };
 
+  const handleServicesNav = () => {
+    if (currentView !== 'shop') {
+      setCurrentView('shop');
+      setTimeout(() => {
+        shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } else {
+      shopSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-8">
@@ -300,7 +312,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] relative">
-      {(currentView === 'shop' || currentView === 'profile') && <ProductRain products={products.filter(p => p.isPublic)} />}
+      {(currentView === 'shop' || currentView === 'profile' || currentView === 'contact') && <ProductRain products={products.filter(p => p.isPublic)} />}
 
       <Navbar 
         currentView={currentView} 
@@ -311,6 +323,7 @@ const App: React.FC = () => {
         onLogout={async () => { await supabase.auth.signOut(); setUser(null); setCart([]); resetToShop(); }}
         onAuthClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
         onMarkNotificationsRead={handleMarkNotifsRead}
+        onServicesClick={handleServicesNav}
       />
 
       {currentView === 'shop' && <ProductTicker products={products.filter(p => p.isPublic)} onProductClick={(p) => { setSelectedProduct(p); setCurrentView('product-detail'); }} />}
@@ -414,6 +427,8 @@ const App: React.FC = () => {
             onDeleteCategory={handleDeleteCategory}
             onBack={handleAdminLogout} 
           />
+        ) : currentView === 'contact' ? (
+          <ContactView onBack={resetToShop} />
         ) : (
           <div className="text-center py-20"><button onClick={resetToShop} className="px-12 py-5 bg-[#0F172A] text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl">Return to Catalog</button></div>
         )}
@@ -452,21 +467,23 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
-        <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
-          <div className="flex items-center gap-4">
-            <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
-              <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
-              <div className="flex items-baseline relative z-10 font-black text-sm"><span className="text-blue-600">D</span><span className="text-green-500 -ml-0.5">S</span></div>
+      {currentView !== 'admin' && (
+        <footer className="bg-white border-t border-slate-100 py-16 mt-20 relative z-10">
+          <div className="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="flex items-center gap-4">
+              <div className="relative flex items-center justify-center w-12 h-12 flex-shrink-0 group">
+                <div className="absolute inset-0 border border-cyan-400/40 rounded-full group-hover:border-cyan-400 transition-colors"></div>
+                <div className="flex items-baseline relative z-10 font-black text-sm"><span className="text-blue-600">D</span><span className="text-green-500 -ml-0.5">S</span></div>
+              </div>
+              <div className="flex flex-col items-start">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
+                <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>Mehedi Hasan • DS STORE GLOBAL</p>
+              </div>
             </div>
-            <div className="flex flex-col items-start">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Platform Owner</p>
-              <p className="text-xs font-black text-slate-900 uppercase tracking-widest cursor-pointer hover:text-blue-600 transition-colors" onClick={handleAdminAccessTrigger}>Mehedi Hasan • DS STORE GLOBAL</p>
-            </div>
+            <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2005-2025 DS SERVICE STORE</p>
           </div>
-          <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.3em]">© 2005-2025 DS SERVICE STORE</p>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, q) => setCart(cart.map(i => i.id === id ? {...i, quantity: q} : i))} onCheckout={() => { setIsCartOpen(false); setCurrentView('checkout'); }} />
       <AuthModal isOpen={isAuthModalOpen} initialMode={authMode} onClose={() => setIsAuthModalOpen(false)} onLogin={(u) => setUser(u)} />
