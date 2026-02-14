@@ -51,7 +51,7 @@ const App: React.FC = () => {
       const { data: dbCats, error: catError } = await supabase
         .from('categories')
         .select('*')
-        .order('created_at', { ascending: true }); // Changed from order_index to created_at
+        .order('created_at', { ascending: true });
       
       if (!catError && dbCats) {
         setCategories(dbCats);
@@ -185,7 +185,6 @@ const App: React.FC = () => {
   };
 
   const handleAddCategory = async (name: string) => {
-    // Removed order_index to fix database column missing error
     const { error } = await supabase.from('categories').insert([{ name }]);
     if (error) {
       console.error("Supabase AddCategory Error:", error);
@@ -375,7 +374,6 @@ const App: React.FC = () => {
                        setCart(prev => {
                          const existing = prev.find(item => item.id === p.id);
                          if (existing) {
-                           // Logic: Total quantity cannot exceed product stock
                            const newQty = Math.min(p.stock, existing.quantity + 1);
                            return prev.map(item => item.id === p.id ? { ...item, quantity: newQty } : item);
                          }
@@ -401,7 +399,6 @@ const App: React.FC = () => {
             setCart(prev => {
               const existing = prev.find(item => item.id === p.id);
               if (existing) {
-                // Logic: Clamp total added quantity to stock limit
                 const newQty = Math.min(p.stock, existing.quantity + q);
                 return prev.map(item => item.id === p.id ? { ...item, quantity: newQty } : item);
               }
@@ -411,7 +408,8 @@ const App: React.FC = () => {
           }} onBack={resetToShop} />
         ) : currentView === 'checkout' ? (
           <CheckoutView items={cart} onBack={resetToShop} onSuccess={async (order) => {
-            const { error, data } = await supabase.from('orders').insert([{
+            // 1. First insert the order record
+            const { error: orderError, data: orderData } = await supabase.from('orders').insert([{
               user_id: user?.id,
               items: order.items,
               total: order.total,
@@ -423,10 +421,22 @@ const App: React.FC = () => {
               transaction_id: order.transaction_id,
               screenshot_url: order.screenshotUrl
             }]).select();
-            if (!error) {
+
+            if (!orderError && orderData && orderData.length > 0) {
+              // 2. Logic: AUTOMATICALLY DECREMENT STOCK for each item ordered
+              for (const item of order.items) {
+                // Find current product state to get the most recent stock count
+                const product = products.find(p => p.id === item.id);
+                if (product) {
+                  const newStock = Math.max(0, product.stock - item.quantity);
+                  // Update the products table in Supabase
+                  await supabase.from('products').update({ stock: newStock }).eq('id', item.id);
+                }
+              }
+
               const newNotif: Notification = {
                 id: Date.now().toString(),
-                message: `✅ Order Placed! ID: #${data[0].id.slice(0,8)}. Admin will verify soon.`,
+                message: `✅ Order Placed! ID: #${orderData[0].id.slice(0,8)}. Admin will verify soon.`,
                 type: 'system',
                 createdAt: new Date().toISOString(),
                 isRead: false
@@ -434,7 +444,11 @@ const App: React.FC = () => {
               setNotifications(prev => [newNotif, ...prev]);
               setCart([]);
               resetToShop();
-              fetchData();
+              // 3. Re-fetch data to sync all stock and order states
+              await fetchData();
+            } else if (orderError) {
+              console.error("Supabase Order Error:", orderError);
+              alert("Order failed: " + orderError.message);
             }
           }} />
         ) : currentView === 'profile' && user ? (
