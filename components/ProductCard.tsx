@@ -66,7 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <button 
           onClick={(e) => {
             e.stopPropagation();
-            onAddToCart(product);
+            onViewDetails(product);
           }}
           disabled={isOutOfStock}
           className={`w-full py-4 rounded-[1.25rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all

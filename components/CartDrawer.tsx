@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { CartItem, Order } from '../types';
 
 interface CartDrawerProps {
@@ -21,7 +21,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onUpdateQuantity, 
   onCheckout 
 }) => {
-  const [activeTab, setActiveTab] = useState<'cart' | 'history'>('cart');
+  const [activeTab, setActiveTab] = React.useState<'cart' | 'history'>('cart');
   
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -98,22 +98,40 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </button>
                       </div>
                       <p className="text-blue-600 font-black text-sm mt-1">${item.price.toFixed(2)}</p>
-                      <div className="flex items-center gap-3 mt-4">
-                        <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                      <div className="flex flex-col gap-1.5 mt-4">
+                        <div className={`flex items-center border rounded-xl overflow-hidden bg-white shadow-sm transition-colors ${item.quantity >= item.stock ? 'border-amber-300' : 'border-slate-200'}`}>
                           <button 
                             onClick={() => onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
                             className="px-3 py-1.5 hover:bg-slate-50 transition-colors font-black text-slate-400 hover:text-slate-900"
                           >
                             -
                           </button>
-                          <span className="w-8 text-center text-xs font-black text-slate-900">{item.quantity}</span>
+                          <input 
+                            type="number"
+                            min="1"
+                            max={item.stock}
+                            value={item.quantity}
+                            onChange={(e) => {
+                              let val = parseInt(e.target.value);
+                              if (!isNaN(val)) {
+                                if (val > item.stock) val = item.stock;
+                                if (val < 1) val = 1;
+                                onUpdateQuantity(item.id, val);
+                              }
+                            }}
+                            className="w-12 text-center text-xs font-black text-slate-900 outline-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
                           <button 
-                            onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                            className="px-3 py-1.5 hover:bg-slate-50 transition-colors font-black text-slate-400 hover:text-slate-900"
+                            disabled={item.quantity >= item.stock}
+                            onClick={() => onUpdateQuantity(item.id, Math.min(item.stock, item.quantity + 1))}
+                            className={`px-3 py-1.5 transition-colors font-black ${item.quantity >= item.stock ? 'bg-slate-50 text-slate-200 cursor-not-allowed' : 'hover:bg-slate-50 text-slate-400 hover:text-slate-900'}`}
                           >
                             +
                           </button>
                         </div>
+                        {item.quantity >= item.stock && (
+                          <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest pl-1">Limit: {item.stock} in stock</span>
+                        )}
                       </div>
                     </div>
                   </div>

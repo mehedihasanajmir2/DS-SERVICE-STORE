@@ -12,17 +12,24 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onAddToCa
   const [quantity, setQuantity] = useState(1);
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value);
-    if (!isNaN(val) && val >= 1) {
-      setQuantity(val);
-    } else if (e.target.value === "") {
-      // Allow empty string temporarily for typing
+    let val = parseInt(e.target.value);
+    if (e.target.value === "") {
       setQuantity(0);
+      return;
+    }
+    if (!isNaN(val)) {
+      // Logic: Cannot enter more than available stock
+      if (val > product.stock) {
+        val = product.stock;
+      }
+      if (val < 1) val = 1;
+      setQuantity(val);
     }
   };
 
   const handleBlur = () => {
     if (quantity < 1) setQuantity(1);
+    if (quantity > product.stock) setQuantity(product.stock);
   };
 
   // Pricing Logic
@@ -164,7 +171,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onAddToCa
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
                   <label className="text-sm font-black text-slate-900 uppercase tracking-widest">Quantity:</label>
-                  <div className="flex items-center border-2 border-slate-200 rounded-2xl overflow-hidden bg-slate-50 w-32 shadow-inner">
+                  <div className={`flex items-center border-2 rounded-2xl overflow-hidden bg-slate-50 w-32 shadow-inner transition-colors ${quantity >= product.stock ? 'border-amber-300' : 'border-slate-200'}`}>
                     <button 
                       onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
                       className="w-10 h-12 flex items-center justify-center font-black hover:bg-slate-200 transition-colors"
@@ -174,18 +181,23 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onAddToCa
                     <input 
                       type="number"
                       min="1"
+                      max={product.stock}
                       value={quantity === 0 ? "" : quantity}
                       onChange={handleQuantityChange}
                       onBlur={handleBlur}
                       className="flex-1 w-full bg-transparent text-center font-black text-lg outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <button 
-                      onClick={() => setQuantity(prev => prev + 1)}
-                      className="w-10 h-12 flex items-center justify-center font-black hover:bg-slate-200 transition-colors"
+                      disabled={quantity >= product.stock}
+                      onClick={() => setQuantity(prev => Math.min(product.stock, prev + 1))}
+                      className={`w-10 h-12 flex items-center justify-center font-black transition-colors ${quantity >= product.stock ? 'bg-slate-100 text-slate-300' : 'hover:bg-slate-200'}`}
                     >
                       +
                     </button>
                   </div>
+                  {quantity >= product.stock && product.stock > 0 && (
+                    <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest animate-pulse">Max Stock Reached</span>
+                  )}
                 </div>
                 
                 {quantity > 0 && (

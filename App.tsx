@@ -374,7 +374,11 @@ const App: React.FC = () => {
                        if (!user) { setAuthMode('signin'); setIsAuthModalOpen(true); return; }
                        setCart(prev => {
                          const existing = prev.find(item => item.id === p.id);
-                         if (existing) return prev.map(item => item.id === p.id ? { ...item, quantity: item.quantity + 1 } : item);
+                         if (existing) {
+                           // Logic: Total quantity cannot exceed product stock
+                           const newQty = Math.min(p.stock, existing.quantity + 1);
+                           return prev.map(item => item.id === p.id ? { ...item, quantity: newQty } : item);
+                         }
                          return [...prev, { ...p, quantity: 1 }];
                        });
                        setIsCartOpen(true);
@@ -396,8 +400,12 @@ const App: React.FC = () => {
             if (!user) { setAuthMode('signin'); setIsAuthModalOpen(true); return; }
             setCart(prev => {
               const existing = prev.find(item => item.id === p.id);
-              if (existing) return prev.map(item => item.id === p.id ? { ...item, quantity: item.quantity + q } : item);
-              return [...prev, { ...p, quantity: q }];
+              if (existing) {
+                // Logic: Clamp total added quantity to stock limit
+                const newQty = Math.min(p.stock, existing.quantity + q);
+                return prev.map(item => item.id === p.id ? { ...item, quantity: newQty } : item);
+              }
+              return [...prev, { ...p, quantity: Math.min(p.stock, q) }];
             });
             setIsCartOpen(true);
           }} onBack={resetToShop} />
