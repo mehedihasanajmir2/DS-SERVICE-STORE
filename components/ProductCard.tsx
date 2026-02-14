@@ -53,8 +53,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
         <div className="flex items-center justify-between mb-6 mt-auto">
             <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isOutOfStock ? 'bg-slate-300' : 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.4)]'}`}></div>
-                <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${isOutOfStock ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {isOutOfStock ? 'Disabled' : 'Available'}
+                <span className={`text-[9px] font-black uppercase tracking-[0.12em] ${isOutOfStock ? 'text-slate-400' : 'text-slate-600'}`}>
+                    {isOutOfStock ? 'Out of Stock' : `${product.stock} Units Available`}
                 </span>
             </div>
             <div className="bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 flex items-center gap-1.5">
