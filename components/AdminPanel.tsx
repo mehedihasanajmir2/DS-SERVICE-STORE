@@ -44,7 +44,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [selectedAdminOrder, setSelectedAdminOrder] = useState<Order | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo";
+  const ownerPhotoUrl = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgjBWvsWRxC5BMO7lrBlR51M16Wr-TGJmpvNS1ebqw-oSxu_u7hs16CxBW5SOBb_L4qXa1nppUdeuUAo1dXlb08gQRQrRpCJqWIqwnV4eunHDCDEVP9V7Ej3RUcF1SNtk-0RFgroH98yirqeZa_qp4UdFLZ3BIjZ_6mf-Pu5zgiwIulhXXbAqg7XVg5GNuU/s976/661925676_1454910596176898_4492282011139181832_n.jpg";
 
   const [formData, setFormData] = useState({
     name: '',
@@ -188,7 +188,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-6">
             <div className="w-24 h-24 rounded-full border-4 border-white/10 overflow-hidden shadow-2xl">
-              <img src={ownerPhotoUrl} alt="Admin" className="w-full h-full object-cover" />
+              <img src={ownerPhotoUrl} alt="Admin" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter">Mehedi Hasan</h1>

@@ -44,7 +44,7 @@ const App: React.FC = () => {
   const ADMIN_SESSION_KEY = "ds_admin_session_v1";
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   
-  const ownerPhotoUrl = "https://media.licdn.com/dms/image/v2/D5603AQF6FS5z4Ky4RQ/profile-displayphoto-shrink_200_200/B56Zu4YNm2G0AY-/0/1768324915128?e=2147483647&v=beta&t=_coKuJKl31AvjMDdGeLrigjfgyD8rtgblh-J_kP8Ruo"; 
+  const ownerPhotoUrl = "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgjBWvsWRxC5BMO7lrBlR51M16Wr-TGJmpvNS1ebqw-oSxu_u7hs16CxBW5SOBb_L4qXa1nppUdeuUAo1dXlb08gQRQrRpCJqWIqwnV4eunHDCDEVP9V7Ej3RUcF1SNtk-0RFgroH98yirqeZa_qp4UdFLZ3BIjZ_6mf-Pu5zgiwIulhXXbAqg7XVg5GNuU/s976/661925676_1454910596176898_4492282011139181832_n.jpg"; 
 
   const fetchData = async () => {
     try {
@@ -487,7 +487,7 @@ const App: React.FC = () => {
               <div className="absolute inset-[-15px] rounded-full border-2 border-dashed border-blue-500/30 animate-[spin_10s_linear_infinite]"></div>
               <div className="absolute inset-[-10px] rounded-full bg-gradient-to-tr from-blue-600 via-cyan-400 to-blue-600 opacity-20 blur-xl group-hover:opacity-40 transition-opacity duration-700"></div>
               <div className="relative w-40 h-40 rounded-full border-[8px] border-white overflow-hidden shadow-2xl z-10 transition-transform duration-700 group-hover:scale-105">
-                <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" />
+                <img src={ownerPhotoUrl} alt="Mehedi Hasan" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
               <div className="absolute bottom-2 right-2 z-20 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-slate-50 scale-100 group-hover:scale-110 transition-transform duration-500">
                 <svg className="w-6 h-6 text-blue-600 fill-current" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>

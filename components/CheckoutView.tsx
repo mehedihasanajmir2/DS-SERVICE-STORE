@@ -168,7 +168,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-[#F3BA2F] rounded-2xl shadow-lg border border-white/20 flex items-center justify-center p-2 overflow-hidden transition-transform hover:scale-105">
-                        <img src="https://logowik.com/content/uploads/images/binance-black-icon5996.logowik.com.webp" className="w-full h-auto object-contain" alt="Binance Logo" />
+                        <img src="https://logowik.com/content/uploads/images/binance-black-icon5996.logowik.com.webp" className="w-full h-auto object-contain" alt="Binance Logo" referrerPolicy="no-referrer" />
                       </div>
                       <div className="text-left">
                         <p className="font-black text-slate-900 text-lg">Binance Pay</p>
@@ -202,7 +202,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({ items, onBack, onSuc
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center p-2">
-                        <img src="https://www.rainbownetworkbd.com/Theme/images/B%26N.png" className="w-full h-auto object-contain" alt="Bkash & Nagad" />
+                        <img src="https://www.rainbownetworkbd.com/Theme/images/B%26N.png" className="w-full h-auto object-contain" alt="Bkash & Nagad" referrerPolicy="no-referrer" />
                       </div>
                       <div className="text-left">
                         <p className="font-black text-slate-900 text-lg">Mobile Banking</p>

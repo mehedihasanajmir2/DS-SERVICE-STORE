@@ -1,5 +1,6 @@
 {
   "name": "DS SERVICE STORE",
   "description": "DS SERVICE STORE is the premium digital accounts platform for verified Apple ID, iCloud, Virtual Visa Cards, and Gmail services.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }
